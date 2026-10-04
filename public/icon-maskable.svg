@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <pattern id="hatch-m" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="14" stroke="#4EB09B" stroke-width="4" opacity="0.5"/>
+    </pattern>
+  </defs>
+  <!-- maskable: nền tràn viền, nội dung gói trong vòng an toàn 80% -->
+  <rect width="512" height="512" fill="#FBF6EE"/>
+  <ellipse cx="256" cy="256" rx="164" ry="118" fill="none" stroke="#9A9188" stroke-width="9" stroke-dasharray="22 18"/>
+  <ellipse cx="256" cy="256" rx="164" ry="118" fill="url(#hatch-m)"/>
+  <path d="M192 262c26 24 42 44 60 70 38-62 78-116 126-158" fill="none" stroke="#45403A" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

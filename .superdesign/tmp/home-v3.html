@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="view-transition" content="same-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@700;800&family=Be+Vietnam+Pro:wght@400;500;600&family=IBM+Plex+Mono:wght@400;600&display=swap');
+    
+    :root {
+      --bg: #FBF6EE;
+      --card: #FFFFFF;
+      --rule: #F0E6D6;
+      --ink: #45403A;
+      --muted: #9A9188;
+      --teal: #4EB09B;
+      --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --pink: #FFB6AF;
+      --peach: #FBC193;
+      --cream: #FAE0C7;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Be Vietnam Pro', sans-serif;
+      background-color: var(--bg);
+      color: var(--ink);
+    }
+
+    .font-display {
+      font-family: 'Bricolage Grotesque', sans-serif;
+      tracking-tight;
+    }
+
+    .font-mono {
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    /* Card with double border top signature element */
+    .card-double-top {
+      position: relative;
+      border: 1px solid var(--rule);
+      border-radius: 10px;
+      background: var(--card);
+      box-shadow: 0 1px 2px rgba(69,64,58,0.06);
+    }
+    .card-double-top::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--rule);
+    }
+    .card-double-top::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--rule);
+    }
+
+    /* Pencil shading texture for bubbles */
+    .pencil-shading {
+      background-image: repeating-linear-gradient(-45deg, transparent, transparent 1px, currentColor 1px, currentColor 2px);
+      background-size: 4px 4px;
+    }
+
+    .bubble-oval {
+      border-radius: 50% / 50%;
+    }
+
+    /* Dashed Separator */
+    .separator-dashed {
+      border-top: 1px dashed var(--rule);
+    }
+
+    .highlight-peach {
+      position: relative;
+      display: inline-block;
+      z-index: 1;
+    }
+    .highlight-peach::before {
+      content: '';
+      position: absolute;
+      bottom: 2px;
+      left: -2px;
+      right: -2px;
+      height: 50%;
+      background: var(--peach);
+      z-index: -1;
+      opacity: 0.6;
+    }
+
+    @view-transition {
+      navigation: auto;
+    }
+
+    @keyframes pencil-sweep {
+      from { mask-image: linear-gradient(to right, black 0%, transparent 0%); }
+      to { mask-image: linear-gradient(to right, black 100%, transparent 100%); }
+    }
+    .animate-pencil-sweep {
+      animation: pencil-sweep 0.6s ease-out forwards;
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen bg-[#FBF6EE] flex flex-col">
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-5 pb-4 flex justify-between items-end">
+      <div class="flex flex-col">
+        <span class="font-display text-[22px] text-[#4EB09B] font-extrabold leading-none mb-1">qqlearn</span>
+        <h1 class="font-display text-[32px] font-bold leading-tight text-[#45403A]">Chào buổi sáng,<br>Minh Anh</h1>
+      </div>
+      <a href="#" id="streak-link" class="flex flex-col items-end pb-1">
+        <div class="flex items-center gap-1.5 bg-[#FFB6AF] px-3 py-1.5 rounded-full">
+          <iconify-icon icon="lucide:flame" class="text-[#F28076] text-sm"></iconify-icon>
+          <span class="font-mono text-[13px] font-bold text-[#F28076]">12 ngày</span>
+        </div>
+      </a>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto px-5 pb-32 space-y-7">
+      
+      <!-- Today Goal Progress -->
+      <section class="card-double-top p-6 flex flex-col items-center pt-8">
+        <span class="font-mono text-[11px] font-semibold text-[#9A9188] uppercase tracking-[0.14em] mb-6">
+          SECTION 1 · MỤC TIÊU HÔM NAY
+        </span>
+        
+        <div class="relative w-48 h-28 flex items-center justify-center">
+          <!-- The Oval Ring Progress -->
+          <div class="absolute inset-0 border-[1.5px] border-dashed border-[#F0E6D6] bubble-oval"></div>
+          <div class="absolute inset-0 border-[1.5px] border-[#4EB09B] bubble-oval text-[#4EB09B] pencil-shading animate-pencil-sweep" style="clip-path: polygon(0 0, 70% 0, 70% 100%, 0 100%)"></div>
+          
+          <div class="flex flex-col items-center justify-center z-10">
+            <span class="font-display text-[48px] font-bold text-[#45403A] leading-none">38</span>
+            <span class="font-mono text-[12px] text-[#9A9188] mt-1">phút còn lại</span>
+          </div>
+        </div>
+
+        <div class="mt-6 w-full separator-dashed pt-4 flex flex-col items-center">
+          <p class="text-[14px] text-[#9A9188]">Mục tiêu: <span class="font-mono font-bold text-[#45403A]">90 phút</span></p>
+          <a href="#" id="cta-start-study" class="mt-5 w-full h-[54px] bg-[#4EB09B] text-white font-semibold rounded-[8px] flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+            Bắt đầu buổi học
+          </a>
+        </div>
+      </section>
+
+      <!-- Subjects -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between px-1">
+          <h2 class="font-mono text-[11px] font-semibold text-[#9A9188] uppercase tracking-[0.14em]">SECTION 2 · CÁC MÔN HỌC</h2>
+          <a href="#" id="add-subject-btn" class="text-[13px] font-semibold text-[#4EB09B] flex items-center gap-1.5">
+            <iconify-icon icon="lucide:plus-circle" class="text-lg"></iconify-icon>
+            Thêm môn
+          </a>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <!-- Subject Card: TOEIC -->
+          <div class="card-double-top p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bubble-oval bg-[#FBC193]"></div>
+              <span class="text-[14px] font-bold text-[#45403A]">TOEIC</span>
+            </div>
+            <div class="font-mono text-[12px] text-[#9A9188]">25/45 phút</div>
+            <div class="w-full bg-[#FAE0C7] h-1.5 rounded-full overflow-hidden">
+              <div class="bg-[#FBC193] h-full rounded-full" style="width: 55%"></div>
+            </div>
+          </div>
+
+          <!-- Subject Card: Toán -->
+          <div class="card-double-top p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bubble-oval bg-[#4EB09B]"></div>
+              <span class="text-[14px] font-bold text-[#45403A]">Toán học</span>
+            </div>
+            <div class="font-mono text-[12px] text-[#9A9188]">12/30 phút</div>
+            <div class="w-full bg-[#E4F3EF] h-1.5 rounded-full overflow-hidden">
+              <div class="bg-[#4EB09B] h-full rounded-full" style="width: 40%"></div>
+            </div>
+          </div>
+
+          <!-- Subject Card: Lập trình -->
+          <div class="card-double-top p-4 space-y-3">
+            <div class="flex items-center gap-2">
+              <div class="w-3 h-3 bubble-oval bg-[#F28076]"></div>
+              <span class="text-[14px] font-bold text-[#45403A]">Lập trình</span>
+            </div>
+            <div class="font-mono text-[12px] text-[#9A9188]">15/60 phút</div>
+            <div class="w-full bg-[#FFB6AF] h-1.5 rounded-full overflow-hidden">
+              <div class="bg-[#F28076] h-full rounded-full" style="width: 25%"></div>
+            </div>
+          </div>
+
+          <!-- Add New Placeholder -->
+          <div class="border-1.5 border-dashed border-[#F0E6D6] p-4 rounded-[10px] flex flex-col items-center justify-center opacity-60 bg-white/50">
+            <iconify-icon icon="lucide:plus" class="text-[#9A9188] text-xl mb-1"></iconify-icon>
+            <span class="text-[12px] text-[#9A9188] font-medium">Môn mới</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- End of Day Note Reminder -->
+      <section class="card-double-top bg-[#FFB6AF]/20 border-[#F28076]/30 p-5 flex items-start gap-4">
+        <div class="w-11 h-11 rounded-[8px] bg-white border border-[#F28076]/20 flex items-center justify-center shrink-0">
+          <iconify-icon icon="lucide:pen-tool" class="text-[#F28076] text-xl"></iconify-icon>
+        </div>
+        <div class="flex-1">
+          <span class="font-mono text-[10px] font-bold text-[#F28076] uppercase tracking-wider block mb-1">NOTE REMINDER</span>
+          <h4 class="text-[15px] font-bold text-[#45403A]">Ghi chú cuối ngày</h4>
+          <p class="text-[13px] text-[#9A9188] mt-1 leading-relaxed">
+            Đừng quên tổng kết kiến thức bạn đã học được <span class="highlight-peach font-semibold text-[#45403A]">hôm nay</span> nhé!
+          </p>
+          <a href="#" id="write-note-link" class="inline-flex items-center gap-2 mt-4 text-[14px] font-bold text-[#F28076]">
+            <span>Viết ngay thôi</span>
+            <iconify-icon icon="lucide:arrow-right" class="text-sm"></iconify-icon>
+          </a>
+        </div>
+      </section>
+    </main>
+
+    <!-- Navigation Bar -->
+    <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-[#F0E6D6] z-50 pb-[34px] flex items-center justify-around h-[90px] px-6">
+      <a href="#" id="nav-home" class="flex flex-col items-center gap-1.5">
+        <iconify-icon icon="lucide:home" class="text-2xl text-[#4EB09B]"></iconify-icon>
+        <span class="text-[10px] font-bold text-[#4EB09B]">TRANG CHỦ</span>
+      </a>
+      <a href="#" id="nav-learn" class="flex flex-col items-center gap-1.5">
+        <iconify-icon icon="lucide:book-open" class="text-2xl text-[#9A9188]"></iconify-icon>
+        <span class="text-[10px] font-bold text-[#9A9188]">HỌC</span>
+      </a>
+      <a href="#" id="nav-handbook" class="flex flex-col items-center gap-1.5">
+        <iconify-icon icon="lucide:layout-list" class="text-2xl text-[#9A9188]"></iconify-icon>
+        <span class="text-[10px] font-bold text-[#9A9188]">SỔ TAY</span>
+      </a>
+      <a href="#" id="nav-stats" class="flex flex-col items-center gap-1.5">
+        <iconify-icon icon="lucide:bar-chart-3" class="text-2xl text-[#9A9188]"></iconify-icon>
+        <span class="text-[10px] font-bold text-[#9A9188]">THỐNG KÊ</span>
+      </a>
+    </nav>
+  </div>
+</body>
+</html>

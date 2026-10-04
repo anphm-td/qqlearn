@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FBF6EE; --card: #FFFFFF; --rule: #F0E6D6;
+      --ink: #45403A; --muted: #9A9188;
+      --teal: #4EB09B; --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --butter: #FEE686;
+    }
+    body { font-family: 'Be Vietnam Pro', sans-serif; color: var(--ink); margin: 0; }
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+    .double-border-top { border-top: 3px double var(--rule); }
+    .sec-label { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+    .sec-label .dot { width: 8px; height: 8px; border-radius: 9999px; }
+    .step-btn { width: 30px; height: 30px; border-radius: 9999px; border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--card); }
+    .toggle { width: 46px; height: 26px; border-radius: 9999px; border: 1.5px dashed var(--rule); position: relative; display: inline-block; }
+    .toggle.on { background: var(--teal); border: 1.5px solid var(--teal); }
+    .toggle .knob { position: absolute; top: 2px; left: 2px; width: 19px; height: 19px; border-radius: 9999px; background: var(--card); border: 1.5px solid var(--muted); }
+    .toggle.on .knob { left: 22px; border-color: var(--teal); }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE]">
+
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-2">
+      <h1 class="text-3xl display-font text-[#45403A]">Cài đặt</h1>
+    </header>
+
+    <main class="flex-1 px-4 pb-28 pt-3 space-y-5">
+
+      <!-- Mục tiêu hằng ngày — tự chỉnh -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <div class="sec-label"><span class="dot bg-[#4EB09B]"></span><h2 class="text-[14px] font-semibold">Mục tiêu hằng ngày</h2></div>
+        <div class="flex items-center justify-center gap-5 py-2">
+          <button class="step-btn"><iconify-icon icon="lucide:minus" class="text-base"></iconify-icon></button>
+          <div class="text-center">
+            <span class="data-font text-[32px] font-bold leading-none">90</span>
+            <span class="text-[14px] text-[#9A9188] ml-1">phút / ngày</span>
+          </div>
+          <button class="step-btn"><iconify-icon icon="lucide:plus" class="text-base"></iconify-icon></button>
+        </div>
+        <p class="text-[12px] text-[#9A9188] text-center mt-1">Bấm − / + để chỉnh, mỗi lần 5 phút</p>
+        <div class="mt-4 space-y-2.5">
+          <div class="flex justify-between items-center bg-[#FBF6EE] border border-[#F0E6D6] rounded-xl px-4 py-2.5">
+            <span class="text-[14px] flex items-center gap-2"><iconify-icon icon="lucide:medal" class="text-[#F28076]"></iconify-icon>Điểm mục tiêu TOEIC</span>
+            <span class="data-font font-bold text-[15px]">740</span>
+          </div>
+          <div class="flex justify-between items-center bg-[#FBF6EE] border border-[#F0E6D6] rounded-xl px-4 py-2.5">
+            <span class="text-[14px] flex items-center gap-2"><iconify-icon icon="lucide:flag" class="text-[#F28076]"></iconify-icon>Ngày thi</span>
+            <span class="data-font font-bold text-[15px]">14.12.2026</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nhắc lịch — tự chỉnh -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <div class="sec-label"><span class="dot bg-[#F28076]"></span><h2 class="text-[14px] font-semibold">Nhắc lịch</h2></div>
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <span class="text-[14px]">Nhắc bắt đầu học</span>
+            <div class="flex items-center gap-2.5">
+              <button class="step-btn" style="width:26px;height:26px"><iconify-icon icon="lucide:minus" class="text-sm"></iconify-icon></button>
+              <span class="data-font text-[18px] font-bold w-[58px] text-center">19:00</span>
+              <button class="step-btn" style="width:26px;height:26px"><iconify-icon icon="lucide:plus" class="text-sm"></iconify-icon></button>
+              <span class="toggle on"><span class="knob"></span></span>
+            </div>
+          </div>
+          <div class="border-t border-dashed border-[#F0E6D6]"></div>
+          <div class="flex items-center justify-between">
+            <span class="text-[14px]">Nhắc ghi chú cuối ngày</span>
+            <div class="flex items-center gap-2.5">
+              <button class="step-btn" style="width:26px;height:26px"><iconify-icon icon="lucide:minus" class="text-sm"></iconify-icon></button>
+              <span class="data-font text-[18px] font-bold w-[58px] text-center">21:30</span>
+              <button class="step-btn" style="width:26px;height:26px"><iconify-icon icon="lucide:plus" class="text-sm"></iconify-icon></button>
+              <span class="toggle on"><span class="knob"></span></span>
+            </div>
+          </div>
+          <p class="text-[12px] text-[#9A9188]">Bấm − / + để chỉnh giờ, mỗi lần 15 phút</p>
+        </div>
+      </section>
+
+      <!-- Dữ liệu của bạn -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <div class="sec-label"><span class="dot bg-[#BFAEE3]"></span><h2 class="text-[14px] font-semibold">Dữ liệu của bạn</h2></div>
+        <button class="w-full py-3 border-[1.5px] border-[#45403A] rounded-xl font-semibold text-[15px] flex items-center justify-center gap-2">
+          <iconify-icon icon="lucide:download" class="text-lg"></iconify-icon>
+          Sao lưu dữ liệu
+        </button>
+        <p class="text-[13px] text-[#9A9188] mt-3 leading-relaxed">
+          qqlearn — sổ tay học tập của bạn. Mọi ghi chú và thời gian học nằm ngay trên máy này, không cần tài khoản gì cả.
+        </p>
+      </section>
+
+      <!-- Streak -->
+      <section class="bg-[#FFEFF6] border border-[#FEC5E6] rounded-2xl p-5 flex items-center gap-4">
+        <div class="shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center border border-[#FEC5E6]">
+          <iconify-icon icon="lucide:flame" class="text-[#F28076] text-2xl"></iconify-icon>
+        </div>
+        <div>
+          <p class="text-[14px] leading-snug">Streak hiện tại: <span class="data-font font-bold">12 ngày</span> <span class="inline-block align-middle bg-[#FEE686] rounded px-1.5 text-[12px] font-semibold">tuyệt vời!</span></p>
+          <p class="text-[12px] text-[#9A9188] mt-0.5">Học đều mỗi ngày để giữ chuỗi nhé</p>
+        </div>
+      </section>
+    </main>
+
+    <!-- Tab bar -->
+    <footer class="shrink-0 fixed bottom-0 left-0 w-full bg-white border-t border-[#F0E6D6] pb-[34px] pt-3 px-6 z-40">
+      <div class="flex justify-between items-center max-w-[400px] mx-auto">
+        <a href="01-home.html" class="flex flex-col items-center gap-1 text-[#9A9188]"><iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon><span class="text-[11px] font-medium">Trang chủ</span></a>
+        <a href="03-buoi-hoc.html" class="flex flex-col items-center gap-1 text-[#9A9188]"><iconify-icon icon="lucide:pencil" class="text-2xl"></iconify-icon><span class="text-[11px] font-medium">Học</span></a>
+        <a href="06-so-tay.html" class="flex flex-col items-center gap-1 text-[#9A9188]"><iconify-icon icon="lucide:book-open" class="text-2xl"></iconify-icon><span class="text-[11px] font-medium">Sổ tay</span></a>
+        <a href="07-thong-ke.html" class="flex flex-col items-center gap-1 text-[#9A9188]"><iconify-icon icon="lucide:bar-chart-2" class="text-2xl"></iconify-icon><span class="text-[11px] font-medium">Thống kê</span></a>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

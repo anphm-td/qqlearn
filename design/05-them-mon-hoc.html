@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FBF6EE; --card: #FFFFFF; --rule: #F0E6D6;
+      --ink: #45403A; --muted: #9A9188;
+      --teal: #4EB09B; --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --mango: #FFD273; --mango-soft: #FFF3D9;
+      --lavender: #BFAEE3; --lavender-soft: #F1ECFA;
+      --pink: #FEC5E6; --pink-soft: #FFEFF6;
+      --mauve: #DEB5D7; --mauve-soft: #F7EDF5;
+      --peach: #FBC193; --peach-soft: #FDF0DD;
+      --cream: #FAE0C7; --cream-soft: #FBF3E4;
+    }
+    body { font-family: 'Be Vietnam Pro', sans-serif; color: var(--ink); margin: 0; }
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+    .double-border-top { border-top: 3px double var(--rule); }
+    .washi-tape { height: 8px; width: 100%; position: absolute; top: 0; left: 0; opacity: 0.85; transform: translateY(-2px) rotate(-0.5deg); border-radius: 2px; }
+    .step-btn { width: 34px; height: 34px; border-radius: 9999px; border: 1.5px solid var(--ink); display: flex; align-items: center; justify-content: center; color: var(--ink); background: var(--card); }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE]">
+
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-2 flex items-center gap-3">
+      <button class="w-9 h-9 rounded-full bg-white border border-[#F0E6D6] flex items-center justify-center text-[#45403A]">
+        <iconify-icon icon="lucide:chevron-left" class="text-xl"></iconify-icon>
+      </button>
+      <h1 class="text-2xl display-font text-[#45403A]">Thêm môn học mới</h1>
+    </header>
+
+    <main class="flex-1 px-4 pb-10 space-y-5">
+
+      <!-- Tên môn học -->
+      <section class="relative bg-white border border-[#F0E6D6] rounded-2xl p-5 pt-6">
+        <div class="washi-tape bg-[#BFAEE3]"></div>
+        <label class="block text-[14px] font-semibold mb-2">Tên môn học</label>
+        <input type="text" placeholder="Ví dụ: Toán giải tích"
+          class="w-full bg-[#FBF6EE] border border-[#F0E6D6] rounded-xl py-3 px-4 text-[15px] focus:outline-none focus:ring-1 focus:ring-[#4EB09B] placeholder-[#9A9188]">
+      </section>
+
+      <!-- Chọn màu -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <label class="block text-[14px] font-semibold mb-4">Chọn màu cho môn</label>
+        <div class="flex items-center justify-between px-1">
+          <button class="w-11 h-11 rounded-full bg-[#FFD273]"></button>
+          <button class="w-11 h-11 rounded-full bg-[#BFAEE3] ring-2 ring-offset-2 ring-[#45403A]"></button>
+          <button class="w-11 h-11 rounded-full bg-[#FEC5E6]"></button>
+          <button class="w-11 h-11 rounded-full bg-[#DEB5D7]"></button>
+          <button class="w-11 h-11 rounded-full bg-[#FBC193]"></button>
+          <button class="w-11 h-11 rounded-full bg-[#FAE0C7]"></button>
+        </div>
+      </section>
+
+      <!-- Mục tiêu riêng — tự chỉnh -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <div class="flex items-baseline justify-between mb-4">
+          <label class="text-[14px] font-semibold">Mục tiêu riêng cho môn này</label>
+          <span class="text-[12px] text-[#9A9188]">tùy chọn</span>
+        </div>
+        <div class="flex items-center justify-center gap-5 py-2">
+          <button class="step-btn"><iconify-icon icon="lucide:minus" class="text-lg"></iconify-icon></button>
+          <div class="text-center">
+            <span class="data-font text-[34px] font-bold leading-none">45</span>
+            <span class="text-[14px] text-[#9A9188] ml-1">phút / ngày</span>
+          </div>
+          <button class="step-btn"><iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon></button>
+        </div>
+        <div class="mt-4 flex items-center gap-2">
+          <input type="text" inputmode="numeric" placeholder="Hoặc nhập số phút khác"
+            class="flex-1 bg-[#FBF6EE] border border-[#F0E6D6] rounded-xl py-2.5 px-4 text-[14px] data-font focus:outline-none focus:ring-1 focus:ring-[#4EB09B] placeholder-[#9A9188]">
+          <span class="text-[12px] text-[#9A9188]">phút</span>
+        </div>
+        <p class="text-[12px] text-[#9A9188] mt-3 flex items-center gap-1.5">
+          <iconify-icon icon="lucide:info" class="text-sm"></iconify-icon>
+          Bỏ trống để dùng mục tiêu chung (90 phút/ngày)
+        </p>
+      </section>
+
+      <!-- Chọn hình -->
+      <section class="bg-white border border-[#F0E6D6] rounded-2xl p-5">
+        <label class="block text-[14px] font-semibold mb-4">Chọn hình nhỏ dễ thương</label>
+        <div class="flex items-center justify-between px-1">
+          <button class="w-12 h-12 rounded-2xl bg-[#F1ECFA] flex items-center justify-center text-[#45403A]">
+            <iconify-icon icon="lucide:book-open" class="text-xl"></iconify-icon>
+          </button>
+          <button class="w-12 h-12 flex items-center justify-center text-[#9A9188]">
+            <iconify-icon icon="lucide:pen-line" class="text-xl"></iconify-icon>
+          </button>
+          <button class="w-12 h-12 flex items-center justify-center text-[#9A9188]">
+            <iconify-icon icon="lucide:mountain" class="text-xl"></iconify-icon>
+          </button>
+          <button class="w-12 h-12 flex items-center justify-center text-[#9A9188]">
+            <iconify-icon icon="lucide:heart" class="text-xl"></iconify-icon>
+          </button>
+          <button class="w-12 h-12 flex items-center justify-center text-[#9A9188]">
+            <iconify-icon icon="lucide:coffee" class="text-xl"></iconify-icon>
+          </button>
+          <button class="w-12 h-12 flex items-center justify-center text-[#9A9188]">
+            <iconify-icon icon="lucide:music" class="text-xl"></iconify-icon>
+          </button>
+        </div>
+      </section>
+
+      <!-- CTA -->
+      <button class="w-full py-4 bg-[#4EB09B] text-white rounded-2xl font-semibold text-[16px] flex items-center justify-center gap-2 active:scale-[0.99] transition-transform">
+        <iconify-icon icon="lucide:check" class="text-xl"></iconify-icon>
+        Tạo môn học
+      </button>
+    </main>
+  </div>
+</body>
+</html>

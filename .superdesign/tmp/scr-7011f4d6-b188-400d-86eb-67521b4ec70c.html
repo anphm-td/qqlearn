@@ -1,0 +1,241 @@
+<!DOCTYPE html><html lang="vi"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/64c3642a-bc8e-4cf4-b62d-8c373e853c0f" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/cce4fa55-e39e-46c1-828b-3c775b6eac21" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/2ef58c33-a887-4f31-b247-e56becc07419" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/f142f0de-5236-4b3c-ace9-29df917661f6" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/7c3e8b45-a478-4002-a3b9-2b857d439134" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/dc4a9c39-c61f-47b0-bb5b-fda0e623a70b" as="document">
+
+  <style>
+    :root {
+      --bg: #FBF6EE;
+      --card: #FFFFFF;
+      --rule: #F0E6D6;
+      --ink: #45403A;
+      --muted: #9A9188;
+      --teal: #4EB09B;
+      --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --pink-soft: #FFB6AF;
+      --butter: #FEE686;
+      --lavender: #BFAEE3;
+      --toeic: #FFD273;
+      --toeic-soft: #FFF3D9;
+      --math: #BFAEE3;
+      --math-soft: #F1ECFA;
+      --japanese: #FEC5E6;
+      --japanese-soft: #FFEFF6;
+    }
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--ink);
+      background-color: var(--bg);
+    }
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+    .double-border {
+      border-top: 3px double var(--rule);
+    }
+    .dashed-separator {
+      border-bottom: 1px dashed var(--rule);
+    }
+
+    @view-transition {
+        navigation: auto;
+    }
+    ::view-transition {
+        background-color: var(--bg);
+    }
+    ::view-transition-old(main-nav),
+    ::view-transition-new(main-nav) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+    ::view-transition-old(main-content) {
+        animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+        animation: 0.25s ease-in 0.1s both fade-in;
+    }
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE] relative">
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-4 flex justify-between items-end">
+      <div>
+        <p class="text-[12px] text-[#9A9188] data-font mb-1">Tổng hợp kiến thức</p>
+        <h1 class="text-3xl display-font text-[#45403A]">Sổ tay</h1>
+      </div>
+      <div class="flex gap-2">
+        <div class="w-10 h-10 rounded-full bg-white border border-[#F0E6D6] flex items-center justify-center">
+          <iconify-icon icon="lucide:search" class="text-xl text-[#9A9188]"></iconify-icon>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-y-auto pb-[100px]" style="view-transition-name: main-content">
+      
+      <!-- Subject Filter Chips -->
+      <div class="px-4 py-2 flex gap-3 overflow-x-auto no-scrollbar whitespace-nowrap">
+        <button class="px-4 py-1.5 rounded-full text-[13px] font-semibold bg-[#4EB09B] text-white border border-[#4EB09B]">
+          Tất cả
+        </button>
+        <button class="px-4 py-1.5 rounded-full text-[13px] font-semibold bg-white border border-[#F0E6D6] flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-[#FFD273]"></div>
+          TOEIC
+        </button>
+        <button class="px-4 py-1.5 rounded-full text-[13px] font-semibold bg-white border border-[#F0E6D6] flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-[#BFAEE3]"></div>
+          Toán
+        </button>
+        <button class="px-4 py-1.5 rounded-full text-[13px] font-semibold bg-white border border-[#F0E6D6] flex items-center gap-2">
+          <div class="w-2.5 h-2.5 rounded-full bg-[#FEC5E6]"></div>
+          Tiếng Nhật
+        </button>
+      </div>
+
+      <!-- Category Filter Chips -->
+      <div class="px-4 mt-4 flex gap-2">
+        <button class="px-3 py-1 text-[12px] bg-white border border-[#F0E6D6] rounded-[6px] text-[#9A9188]">Từ vựng</button>
+        <button class="px-3 py-1 text-[12px] bg-white border border-[#F0E6D6] rounded-[6px] text-[#9A9188]">Lỗi sai</button>
+        <button class="px-3 py-1 text-[12px] bg-white border border-[#F0E6D6] rounded-[6px] text-[#9A9188]">Ghi chú</button>
+      </div>
+
+      <!-- Note List -->
+      <section class="mt-6 px-4 space-y-4">
+        <!-- Note 1 -->
+        <div class="bg-white rounded-[12px] border border-[#F0E6D6] relative group overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6]"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#FFD273]"></div>
+                <span class="text-[12px] text-[#9A9188] font-medium">TOEIC</span>
+              </div>
+              <span class="data-font text-[11px] text-[#9A9188]">03.10.2026</span>
+            </div>
+            <h3 class="text-[15px] font-semibold leading-snug">commute, deliberate và 3 từ mới</h3>
+            <div class="mt-3 flex gap-2">
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#FFF3D9] text-[#45403A] text-[10px] font-medium">Từ vựng</span>
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#E4F3EF] text-[#4EB09B] text-[10px] font-medium">Đã ôn tập</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note 2 -->
+        <div class="bg-white rounded-[12px] border border-[#F0E6D6] relative group overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6]"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#BFAEE3]"></div>
+                <span class="text-[12px] text-[#9A9188] font-medium">Toán</span>
+              </div>
+              <span class="data-font text-[11px] text-[#9A9188]">02.10.2026</span>
+            </div>
+            <h3 class="text-[15px] font-semibold leading-snug">sai 2 câu hình học không gian</h3>
+            <div class="mt-3 flex gap-2">
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#F1ECFA] text-[#45403A] text-[10px] font-medium">Lỗi sai</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note 3 -->
+        <div class="bg-white rounded-[12px] border border-[#F0E6D6] relative group overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6]"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#FEC5E6]"></div>
+                <span class="text-[12px] text-[#9A9188] font-medium">Tiếng Nhật</span>
+              </div>
+              <span class="data-font text-[11px] text-[#9A9188]">01.10.2026</span>
+            </div>
+            <h3 class="text-[15px] font-semibold leading-snug">Kanji N4 bài 5</h3>
+            <div class="mt-3 flex gap-2">
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#FFEFF6] text-[#45403A] text-[10px] font-medium">Từ vựng</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note 4 -->
+        <div class="bg-white rounded-[12px] border border-[#F0E6D6] relative group overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6]"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#FFD273]"></div>
+                <span class="text-[12px] text-[#9A9188] font-medium">TOEIC</span>
+              </div>
+              <span class="data-font text-[11px] text-[#9A9188]">30.09.2026</span>
+            </div>
+            <h3 class="text-[15px] font-semibold leading-snug">quên dạng sau regret</h3>
+            <div class="mt-3 flex gap-2">
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#FFF3D9] text-[#45403A] text-[10px] font-medium">Lỗi sai</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Note 5 -->
+        <div class="bg-white rounded-[12px] border border-[#F0E6D6] relative group overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6]"></div>
+          <div class="p-4">
+            <div class="flex justify-between items-start mb-2">
+              <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-[#BFAEE3]"></div>
+                <span class="text-[12px] text-[#9A9188] font-medium">Toán</span>
+              </div>
+              <span class="data-font text-[11px] text-[#9A9188]">29.09.2026</span>
+            </div>
+            <h3 class="text-[15px] font-semibold leading-snug">ôn chương lũy thừa</h3>
+            <div class="mt-3 flex gap-2">
+              <span class="px-2 py-0.5 rounded-[4px] bg-[#F1ECFA] text-[#45403A] text-[10px] font-medium">Ghi chú</span>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Floating Action Button -->
+    <button class="fixed bottom-[110px] right-6 w-14 h-14 bg-[#4EB09B] text-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-transform z-30">
+      <iconify-icon icon="lucide:plus" class="text-2xl"></iconify-icon>
+    </button>
+
+    <!-- Navigation Tab Bar -->
+    <footer class="shrink-0 fixed bottom-0 left-0 w-full bg-white border-t border-[#F0E6D6] pb-[34px] pt-3 px-6 z-40" style="view-transition-name: main-nav">
+      <div class="flex justify-between items-center max-w-[400px] mx-auto">
+        <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" id="nav-home" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Trang chủ</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/2ef58c33-a887-4f31-b247-e56becc07419" id="nav-study" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:pencil" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Học</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7011f4d6-b188-400d-86eb-67521b4ec70c" id="nav-notebook" class="flex flex-col items-center gap-1 text-[#4EB09B]">
+          <iconify-icon icon="lucide:book-open" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Sổ tay</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7c3e8b45-a478-4002-a3b9-2b857d439134" id="nav-stats" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:bar-chart-2" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Thống kê</span>
+        </a>
+      </div>
+    </footer>
+  </div>
+</body></html>

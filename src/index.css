@@ -1,0 +1,365 @@
+/*
+ * Sổ học TOEIC (qlearn) — design tokens & nguyên liệu dùng chung.
+ * NGUỒN LUẬT: .superdesign/design-system.md v5 (note-first pastel, 2026-10-03).
+ *   - Mục 5: 10 pastel + tokens — KHÔNG tự tạo màu ngoài bảng này.
+ *   - Mục 6: Display Bricolage Grotesque 700/800 · Body Be Vietnam Pro 400/500/600 · Data Quicksand 600/700.
+ *   - Mục 2: "KHÔNG tech" — cấm font mono, cấm nhãn UPPERCASE giãn ký tự, nhãn section = chữ thường + chấm màu.
+ *   - Mục 7: card đường đôi + washi 8px + bubble + motion (bubble tô chì 600ms, note card mới scale 0.96→1).
+ */
+
+@import "tailwindcss";
+
+/* ===== Mục 5 — Color tokens (10 pastel, KHÔNG ĐỔI) ===== */
+:root {
+  --bg: #FBF6EE;            /* nền app */
+  --card: #FFFFFF;          /* nền card/note */
+  --rule: #F0E6D6;          /* viền, đường đôi, track trống, separator nét đứt, washi neutral */
+  --ink: #45403A;           /* chữ chính */
+  --muted: #9A9188;         /* chữ phụ, icon thường */
+  --teal: #4EB09B;          /* màu hành động DUY NHẤT: nút, tiến độ, tab active, chì tô bubble */
+  --teal-soft: #E4F3EF;     /* nền teal nhạt */
+  --coral: #F28076;         /* accent: streak, nhắc, cần chú ý */
+  --pink-soft: #FFB6AF;     /* nền coral nhạt */
+  --butter: #FEE686;        /* highlight tô sau chữ — 1 điểm/màn */
+  --lavender: #BFAEE3;      /* màu phụ/môn/trang trí */
+  --mauve: #DEB5D7;         /* màu phụ/môn/trang trí */
+  --lavender-soft: #F1ECFA; /* nền nhạt */
+  --mauve-soft: #F7EDF5;    /* nền nhạt */
+
+  /* Màu môn (washi + chấm + tint) — design-system.md mục 5, dòng "Màu môn".
+     Teal KHÔNG dùng làm màu môn. */
+  --subject-toeic: #FFD273;        --subject-toeic-soft: #FFF3D9;
+  --subject-toan: #BFAEE3;         --subject-toan-soft: #F1ECFA;
+  --subject-tieng-nhat: #FEC5E6;   --subject-tieng-nhat-soft: #FFEFF6;
+  --subject-lap-trinh: #DEB5D7;    --subject-lap-trinh-soft: #F7EDF5;
+  --subject-mon-them-1: #FBC193;   --subject-mon-them-1-soft: #FDF0DD;
+  --subject-mon-them-2: #FAE0C7;   --subject-mon-them-2-soft: #FBF3E4;
+}
+
+/* Map tokens vào Tailwind v4 (bg-bg, bg-card, text-ink, border-rule, text-teal, ...) */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-rule: var(--rule);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-teal: var(--teal);
+  --color-teal-soft: var(--teal-soft);
+  --color-coral: var(--coral);
+  --color-pink-soft: var(--pink-soft);
+  --color-butter: var(--butter);
+  --color-lavender: var(--lavender);
+  --color-mauve: var(--mauve);
+  --color-lavender-soft: var(--lavender-soft);
+  --color-mauve-soft: var(--mauve-soft);
+
+  --color-subject-toeic: var(--subject-toeic);
+  --color-subject-toan: var(--subject-toan);
+  --color-subject-tieng-nhat: var(--subject-tieng-nhat);
+  --color-subject-lap-trinh: var(--subject-lap-trinh);
+  --color-subject-mon-them-1: var(--subject-mon-them-1);
+  --color-subject-mon-them-2: var(--subject-mon-them-2);
+
+  --font-display: "Bricolage Grotesque", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --font-data: "Quicksand", "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ===== Base + Mục 6 — Typography (display 32/40 · h2 21/28 · body 15/22 · caption 12/16) ===== */
+@layer base {
+  html {
+    background: var(--bg);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 15px;   /* body 15/22 */
+    line-height: 22px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .type-display {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 40px;
+    letter-spacing: -0.01em;
+  }
+
+  .type-h2 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    font-size: 21px;
+    line-height: 28px;
+  }
+
+  .type-body {
+    font-size: 15px;
+    line-height: 22px;
+  }
+
+  .type-caption {
+    font-size: 12px;
+    line-height: 16px;
+  }
+
+  /* Nhãn section = chữ thường thân thiện 14px 600 + chấm màu (mục 2 + 6).
+     Dùng: <p className="section-label">hôm nay</p> — KHÔNG viết UPPERCASE. */
+  .section-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .section-label::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--teal);
+    flex-shrink: 0;
+  }
+
+  /* Biến thể chấm màu khác (khi cần): <p className="section-label label-dot-coral"> */
+  .label-dot-coral::before { background: var(--coral); }
+  .label-dot-butter::before { background: var(--butter); }
+  .label-dot-lavender::before { background: var(--lavender); }
+  .label-dot-mauve::before { background: var(--mauve); }
+
+  /* MỌI số liệu dùng Quicksand 700 và luôn kèm đơn vị (mục 6) */
+  .num {
+    font-family: var(--font-data);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ===== Mục 7 — Card, washi, bubble, nút, chip, stepper ===== */
+@layer components {
+  /* Card nền trắng, viền 1px --rule, radius 10–12px, ĐƯỜNG ĐÔI 3px trên đầu, không gradient/shadow lớn */
+  .paper-card {
+    position: relative;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+  }
+
+  /* Đường đôi 3px trên đầu card (2 nét 1px cách nhau 1px) */
+  .paper-card::before {
+    content: "";
+    display: block;
+    height: 3px;
+    margin: 8px 12px 0;
+    box-sizing: content-box;
+    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  /* Separator trong card: nét đứt --rule */
+  .dashed-rule {
+    border: 0;
+    border-top: 1px dashed var(--rule);
+  }
+
+  /* Dải washi màu môn — dán ngang mép trên card, cao 8px, lệch góc 1–2°, opacity ~0.85 (mục 4/7).
+     Màu truyền qua inline style: style={{ background: "var(--subject-toeic)" }}. */
+  .washi {
+    position: absolute;
+    top: -4px;
+    left: 14px;
+    right: 14px;
+    height: 8px;
+    border-radius: 2px;
+    opacity: 0.85;
+    transform: rotate(1.5deg);
+    background: var(--rule); /* washi neutral khi không gắn môn */
+  }
+
+  /* Bubble: rỗng = nét đứt 1.5px --muted; đầy = texture nét chì teal (mục 7) */
+  .bubble {
+    border-radius: 50%;
+    border: 1.5px dashed var(--muted);
+    background: var(--card);
+  }
+
+  .bubble--filled {
+    border-style: solid;
+    border-color: var(--teal);
+    background-color: var(--teal-soft);
+    background-image: repeating-linear-gradient(
+      135deg,
+      rgb(78 176 155 / 0.45) 0 1.5px,
+      transparent 1.5px 5px
+    );
+  }
+
+  /* Nút: radius 8px, không gradient; --teal là màu hành động DUY NHẤT (mục 5) */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 12px 16px;
+    transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
+  }
+
+  .btn:active {
+    transform: translateY(1px);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .btn-primary {
+    background: var(--teal);
+    color: #ffffff;
+  }
+
+  .btn-secondary {
+    background: var(--card);
+    color: var(--ink);
+    border: 1.5px solid var(--ink);
+  }
+
+  .btn-danger {
+    background: var(--card);
+    color: var(--coral);
+    border: 1.5px solid var(--coral);
+  }
+
+  /* Chip Part 1–7: bubble nhỏ oval; số dùng font Data Quicksand (mục 6) */
+  .part-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1.5px dashed var(--muted);
+    color: var(--muted);
+    padding: 4px 12px;
+    font-family: var(--font-data);
+    font-weight: 700;
+    font-size: 12px;
+    line-height: 16px;
+    transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
+  }
+
+  .part-chip--active {
+    background: var(--teal);
+    border: 1.5px solid var(--teal);
+    color: #ffffff;
+  }
+
+  /* Mục điều hướng sidebar (mục 10): active = bubble nền --teal chữ trắng */
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-radius: 9999px;
+    padding: 9px 14px;
+    font-size: 15px;
+    line-height: 22px;
+    font-weight: 500;
+    color: var(--muted);
+    transition: background-color 120ms ease, color 120ms ease;
+  }
+
+  .nav-item:hover {
+    background: var(--teal-soft);
+    color: var(--ink);
+  }
+
+  .nav-item--active,
+  .nav-item--active:hover {
+    background: var(--teal);
+    color: #ffffff;
+  }
+
+  /* Stepper thời gian tự chỉnh (mục 3 + 7): nút tròn 32px viền 1.5px --ink, số giữa Quicksand 700 */
+  .stepper-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink);
+    background: var(--card);
+    color: var(--ink);
+    font-family: var(--font-data);
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  .stepper-num {
+    font-family: var(--font-data);
+    font-weight: 700;
+    font-size: 21px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Icon line 1.5px — màu qua currentColor, không emoji */
+  .icon-line {
+    display: block;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}
+
+/* ===== Mục 7 — Motion (duy nhất 2 hiệu ứng + check; prefers-reduced-motion: tắt hết) ===== */
+@layer utilities {
+  @keyframes pencil-sweep {
+    from { transform: scaleY(0); }
+    to { transform: scaleY(1); }
+  }
+
+  /* Signature: bubble tô chì quét 600ms ease-out khi mở Home */
+  .anim-pencil-sweep {
+    transform-box: fill-box;
+    transform-origin: 50% 100%;
+    animation: pencil-sweep 600ms ease-out forwards;
+  }
+
+  /* Note card mới hiện bằng scale 0.96→1 nhẹ */
+  @keyframes note-enter {
+    from { transform: scale(0.96); }
+    to { transform: scale(1); }
+  }
+
+  .anim-note-enter {
+    animation: note-enter 220ms ease-out;
+  }
+
+  /* Nét vẽ tay HanddrawnCheck: stroke-dashoffset chạy khi hoàn thành */
+  @keyframes check-draw {
+    from { stroke-dashoffset: 40; }
+    to { stroke-dashoffset: 0; }
+  }
+
+  .anim-check-draw {
+    animation: check-draw 300ms ease-out forwards;
+  }
+
+  /* prefers-reduced-motion: tắt hết, hiện trạng thái cuối ngay (mục 7) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}

@@ -1,0 +1,192 @@
+<!DOCTYPE html><html lang="vi"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FBF6EE;
+      --card: #FFFFFF;
+      --rule: #F0E6D6;
+      --ink: #45403A;
+      --muted: #9A9188;
+      --teal: #4EB09B;
+      --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --pink-soft: #FFB6AF;
+      --butter: #FEE686;
+      --lavender: #BFAEE3;
+      --lavender-soft: #F1ECFA;
+      --toeic: #FFD273;
+      --toeic-soft: #FFF3D9;
+    }
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--ink);
+      background-color: var(--bg);
+    }
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+    .pencil-texture {
+      background-image: repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(78, 176, 155, 0.2) 2px, rgba(78, 176, 155, 0.2) 4px);
+    }
+    .double-border {
+      border-top: 3px double var(--rule);
+    }
+    .dashed-separator {
+      border-top: 1px dashed var(--rule);
+    }
+    .bubble-track {
+      border: 1.5px dashed var(--rule);
+    }
+    .highlight-butter {
+      background: linear-gradient(180deg, transparent 60%, var(--butter) 60%);
+    }
+
+    /* View Transitions */
+    @view-transition { navigation: auto; }
+    ::view-transition-old(main-nav),
+    ::view-transition-new(main-nav) {
+        animation: none;
+        mix-blend-mode: normal;
+    }
+    ::view-transition-old(main-content) {
+        animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+        animation: 0.25s ease-in 0.1s both fade-in;
+    }
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    .timer-blink {
+      animation: blink 1s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+  </style>
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" as="document">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/f142f0de-5236-4b3c-ace9-29df917661f6" as="document">
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE]">
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-4 flex justify-between items-center">
+      <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" class="w-10 h-10 rounded-full bg-white border border-[#F0E6D6] flex items-center justify-center" id="back-to-home">
+        <iconify-icon icon="lucide:chevron-left" class="text-xl text-[#9A9188]"></iconify-icon>
+      </a>
+      <div class="flex items-center gap-2">
+        <div class="w-2.5 h-2.5 rounded-full bg-[#FFD273]"></div>
+        <h2 class="text-[15px] font-semibold text-[#45403A]">TOEIC · Part 5 Grammar</h2>
+      </div>
+      <div class="w-10 h-10"></div> <!-- Spacer -->
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-4 pb-[100px]" style="view-transition-name: main-content">
+      
+      <!-- Timer Section -->
+      <section class="mt-4">
+        <div class="bg-white border border-[#F0E6D6] rounded-[24px] p-8 flex flex-col items-center relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6] rounded-t-[24px]"></div>
+          
+          <div class="flex flex-col items-center text-center">
+            <p class="text-[12px] text-[#9A9188] mb-6">Buổi thứ 2 hôm nay · bắt đầu 08:30</p>
+            
+            <!-- Timer with Pomodoro Bubbles -->
+            <div class="relative flex items-center justify-center mb-8">
+              <!-- Pomodoro Dots -->
+              <div class="absolute inset-0 flex items-center justify-between w-[280px]">
+                <div class="w-5 h-3 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B]"></div>
+                <div class="w-5 h-3 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B] opacity-50"></div>
+              </div>
+              
+              <div class="text-7xl data-font font-bold tracking-tight text-[#45403A] flex items-baseline">
+                19<span class="timer-blink">:</span>57
+              </div>
+            </div>
+
+            <!-- Small Pomodoro Indicator below timer -->
+            <div class="flex gap-2 mb-10">
+              <div class="w-6 h-3.5 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B]"></div>
+              <div class="w-6 h-3.5 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B]"></div>
+              <div class="w-6 h-3.5 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B]"></div>
+              <div class="w-6 h-3.5 rounded-full bubble-track"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="w-full grid grid-cols-2 gap-3">
+              <button class="py-3.5 border-1.5 border-[#45403A] rounded-[12px] font-semibold text-[#45403A] active:scale-[0.98] transition-transform" id="pause-btn">
+                Tạm dừng
+              </button>
+              <a href="https://p.superdesign.dev/draft/f142f0de-5236-4b3c-ace9-29df917661f6" class="py-3.5 border-1.5 border-[#F28076] text-[#F28076] rounded-[12px] font-semibold text-center active:scale-[0.98] transition-transform" id="end-session-btn">
+                Kết thúc buổi
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Ghi nhanh Section -->
+      <section class="mt-8">
+        <div class="flex items-center gap-2 mb-4">
+          <h2 class="text-[14px] font-semibold text-[#45403A]">Ghi nhanh trong buổi</h2>
+          <div class="w-4 h-[1.5px] bg-[#F0E6D6]"></div>
+        </div>
+
+        <div class="bg-white border border-[#F0E6D6] rounded-[12px] overflow-hidden">
+          <div class="p-4 flex items-center justify-between">
+            <div class="flex-1">
+              <p class="text-[15px]"><span class="font-semibold">commute</span> — đi làm hằng ngày</p>
+            </div>
+            <button class="w-7 h-7 bg-[#FFF3D9] rounded-full flex items-center justify-center text-[#FFD273] active:scale-[0.9] transition-transform" id="add-note-1">
+              <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+            </button>
+          </div>
+          <div class="dashed-separator mx-4"></div>
+          <div class="p-4 flex items-center justify-between">
+            <div class="flex-1">
+              <p class="text-[15px]"><span class="font-semibold">deliberate</span> — có chủ đích</p>
+            </div>
+            <button class="w-7 h-7 bg-[#FFF3D9] rounded-full flex items-center justify-center text-[#FFD273] active:scale-[0.9] transition-transform" id="add-note-2">
+              <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+            </button>
+          </div>
+          <div class="p-4 bg-[#FBF6EE]/50">
+             <input type="text" placeholder="Gõ từ mới hoặc lỗi sai..." class="w-full bg-transparent border-none outline-none text-[14px] text-[#9A9188] italic">
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Navigation Tab Bar -->
+    <footer class="shrink-0 fixed bottom-0 left-0 w-full bg-white border-t border-[#F0E6D6] pb-[34px] pt-3 px-6 z-40" style="view-transition-name: main-nav">
+      <div class="flex justify-between items-center max-w-[400px] mx-auto">
+        <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" id="nav-home" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Trang chủ</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/2ef58c33-a887-4f31-b247-e56becc07419" id="nav-study" class="flex flex-col items-center gap-1 text-[#4EB09B]">
+          <iconify-icon icon="lucide:pencil" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Học</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7011f4d6-b188-400d-86eb-67521b4ec70c" id="nav-notebook" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:book-open" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Sổ tay</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7c3e8b45-a478-4002-a3b9-2b857d439134" id="nav-stats" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:bar-chart-2" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Thống kê</span>
+        </a>
+      </div>
+    </footer>
+
+  </div>
+</body></html>

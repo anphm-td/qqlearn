@@ -1,0 +1,193 @@
+<!DOCTYPE html><html lang="vi"><head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&amp;family=Be+Vietnam+Pro:wght@400;500;600&amp;family=Quicksand:wght@600;700&amp;display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #FBF6EE;
+      --card: #FFFFFF;
+      --rule: #F0E6D6;
+      --ink: #45403A;
+      --muted: #9A9188;
+      --teal: #4EB09B;
+      --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --pink-soft: #FFB6AF;
+      --butter: #FEE686;
+      --lavender: #BFAEE3;
+      --lavender-soft: #F1ECFA;
+      --toeic: #FFD273;
+      --toeic-soft: #FFF3D9;
+      --japanese: #FEC5E6;
+      --japanese-soft: #FFEFF6;
+    }
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--ink);
+      background-color: var(--bg);
+    }
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+    .pencil-texture {
+      background-image: repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(78, 176, 155, 0.2) 2px, rgba(78, 176, 155, 0.2) 4px);
+    }
+    .double-border {
+      border-top: 3px double var(--rule);
+    }
+    .dashed-separator {
+      border-top: 1px dashed var(--rule);
+    }
+    .bubble-track {
+      border: 1.5px dashed var(--rule);
+    }
+    .cursor-blink {
+      animation: blink 1s step-end infinite;
+      border-right: 2px solid var(--teal);
+    }
+    @keyframes blink {
+      from, to { border-color: transparent }
+      50% { border-color: var(--teal) }
+    }
+    @view-transition { navigation: auto; }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE]">
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-4 flex justify-between items-center">
+      <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" class="w-10 h-10 rounded-full bg-white border border-[#F0E6D6] flex items-center justify-center" id="back-to-home">
+        <iconify-icon icon="lucide:chevron-left" class="text-xl text-[#9A9188]"></iconify-icon>
+      </a>
+      <h1 class="text-[17px] font-bold display-font text-[#45403A]">Bắt đầu học</h1>
+      <div class="w-10 h-10"></div>
+    </header>
+
+    <main class="flex-1 overflow-y-auto px-4 pb-[100px]" style="view-transition-name: main-content">
+      
+      <!-- Thời lượng tự chỉnh Section -->
+      <section class="mt-4">
+        <div class="bg-white border border-[#F0E6D6] rounded-[16px] p-6 relative overflow-hidden">
+          <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6] rounded-t-[16px]"></div>
+          
+          <div class="flex flex-col items-center">
+            <p class="text-[14px] font-semibold mb-6 flex items-center gap-2">
+              Thời lượng <span class="w-1.5 h-1.5 rounded-full bg-[#4EB09B]"></span>
+            </p>
+            
+            <!-- Stepper -->
+            <div class="flex items-center gap-8 mb-8">
+              <button class="w-10 h-10 rounded-full border-1.5 border-[#45403A] flex items-center justify-center active:scale-90 transition-transform" id="step-down">
+                <iconify-icon icon="lucide:minus" class="text-lg"></iconify-icon>
+              </button>
+              <div class="text-5xl data-font font-bold text-[#45403A] flex items-baseline">
+                45<span class="text-lg ml-1 font-semibold">phút</span>
+              </div>
+              <button class="w-10 h-10 rounded-full border-1.5 border-[#45403A] flex items-center justify-center active:scale-90 transition-transform" id="step-up">
+                <iconify-icon icon="lucide:plus" class="text-lg"></iconify-icon>
+              </button>
+            </div>
+
+            <!-- Presets -->
+            <div class="flex gap-3 mb-6 w-full justify-center">
+              <button class="px-4 py-2 rounded-full border border-[#F0E6D6] text-[13px] data-font font-bold text-[#9A9188]" id="preset-15">15</button>
+              <button class="px-4 py-2 rounded-full border border-[#F0E6D6] text-[13px] data-font font-bold text-[#9A9188]" id="preset-25">25</button>
+              <button class="px-4 py-2 rounded-full bg-[#4EB09B] pencil-texture border border-[#4EB09B] text-[13px] data-font font-bold text-white" id="preset-45">45</button>
+              <button class="px-4 py-2 rounded-full border border-[#F0E6D6] text-[13px] data-font font-bold text-[#9A9188]" id="preset-60">60</button>
+            </div>
+
+            <!-- Custom Input -->
+            <div class="w-full flex items-center justify-center pb-2">
+              <div class="flex items-center gap-2 px-3 py-1.5 border-b border-[#F0E6D6]">
+                <span class="text-[13px] text-[#9A9188]">số phút khác:</span>
+                <div class="flex items-center">
+                   <span class="text-[14px] data-font font-bold text-[#4EB09B]">__</span>
+                   <span class="h-4 w-[1px] cursor-blink"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Chọn môn học Section -->
+      <section class="mt-8">
+        <p class="text-[14px] font-semibold mb-4 flex items-center gap-2">
+          Chọn môn học <span class="w-1.5 h-1.5 rounded-full bg-[#BFAEE3]"></span>
+        </p>
+        
+        <div class="flex flex-wrap gap-3">
+          <!-- Active Toeic Chip with Washi -->
+          <button class="relative bg-white border border-[#F0E6D6] rounded-[12px] px-4 py-5 flex items-center gap-2 overflow-hidden w-[calc(50%-6px)]" id="select-toeic">
+            <div class="absolute top-0 left-0 w-full h-2 bg-[#FFD273] opacity-80 -rotate-1"></div>
+            <div class="w-2.5 h-2.5 rounded-full bg-[#FFD273]"></div>
+            <span class="text-[14px] font-semibold">TOEIC</span>
+          </button>
+
+          <!-- Other Subject Chips -->
+          <button class="bg-white border border-[#F0E6D6] rounded-[12px] px-4 py-5 flex items-center gap-2 w-[calc(50%-6px)]" id="select-math">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#BFAEE3]"></div>
+            <span class="text-[14px] font-semibold">Toán</span>
+          </button>
+
+          <button class="bg-white border border-[#F0E6D6] rounded-[12px] px-4 py-5 flex items-center gap-2 w-[calc(50%-6px)]" id="select-japanese">
+            <div class="w-2.5 h-2.5 rounded-full bg-[#FEC5E6]"></div>
+            <span class="text-[14px] font-semibold">Tiếng Nhật</span>
+          </button>
+
+          <button class="border border-dashed border-[#F0E6D6] rounded-[12px] px-4 py-5 flex items-center justify-center gap-2 w-[calc(50%-6px)]" id="add-subject">
+            <iconify-icon icon="lucide:plus" class="text-[#9A9188]"></iconify-icon>
+            <span class="text-[14px] text-[#9A9188]">Thêm môn</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Mục tiêu & Start -->
+      <section class="mt-10 mb-6">
+        <div class="flex flex-col items-center gap-6">
+          <div class="flex items-center gap-3 bg-white/50 px-4 py-2 rounded-full border border-[#F0E6D6]">
+            <div class="w-6 h-4 rounded-full bubble-track flex items-center justify-center">
+               <div class="w-3 h-2 rounded-full bg-[#4EB09B] pencil-texture"></div>
+            </div>
+            <p class="text-[13px] font-medium">Mục tiêu hôm nay: <span class="data-font font-bold">còn 38 phút</span></p>
+          </div>
+
+          <a href="https://p.superdesign.dev/draft/2ef58c33-a887-4f31-b247-e56becc07419" class="w-full bg-[#4EB09B] pencil-texture text-white text-[16px] font-bold py-4 rounded-[12px] text-center shadow-lg active:scale-[0.98] transition-all" id="start-study-btn">
+            Bắt đầu học ngay
+          </a>
+          
+          <p class="text-[12px] text-[#9A9188]">Buổi thứ 2 hôm nay · 08:30</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Navigation Tab Bar -->
+    <footer class="shrink-0 fixed bottom-0 left-0 w-full bg-white border-t border-[#F0E6D6] pb-[34px] pt-3 px-6 z-40" style="view-transition-name: main-nav">
+      <div class="flex justify-between items-center max-w-[400px] mx-auto">
+        <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" id="nav-home" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:home" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Trang chủ</span>
+        </a>
+        <a href="#" id="nav-study" class="flex flex-col items-center gap-1 text-[#4EB09B]">
+          <iconify-icon icon="lucide:pencil" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Học</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7011f4d6-b188-400d-86eb-67521b4ec70c" id="nav-notebook" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:book-open" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Sổ tay</span>
+        </a>
+        <a href="https://p.superdesign.dev/draft/7c3e8b45-a478-4002-a3b9-2b857d439134" id="nav-stats" class="flex flex-col items-center gap-1 text-[#9A9188]">
+          <iconify-icon icon="lucide:bar-chart-2" class="text-2xl"></iconify-icon>
+          <span class="text-[11px] font-medium">Thống kê</span>
+        </a>
+      </div>
+    </footer>
+
+  </div>
+</body></html>

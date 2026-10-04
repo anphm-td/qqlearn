@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="view-transition" content="same-origin">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://code.iconify.design/iconify-icon/1.0.7/iconify-icon.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Be+Vietnam+Pro:wght@400;500;600&family=Quicksand:wght@600;700&display=swap" rel="stylesheet">
+  <link rel="prefetch" href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" as="document">
+  <style>
+    :root {
+      --bg: #FBF6EE;
+      --card: #FFFFFF;
+      --rule: #F0E6D6;
+      --ink: #45403A;
+      --muted: #9A9188;
+      --teal: #4EB09B;
+      --teal-soft: #E4F3EF;
+      --coral: #F28076;
+      --pink-soft: #FFB6AF;
+      --butter: #FEE686;
+      --lavender: #BFAEE3;
+      --lavender-soft: #F1ECFA;
+      --toeic: #FFD273;
+      --toeic-soft: #FFF3D9;
+      --japanese: #FEC5E6;
+      --japanese-soft: #FFEFF6;
+      --purple-pink: #DEB5D7;
+      --peach: #FBC193;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', sans-serif;
+      color: var(--ink);
+      background-color: var(--bg);
+      margin: 0;
+    }
+
+    .display-font { font-family: 'Bricolage Grotesque', sans-serif; }
+    .data-font { font-family: 'Quicksand', sans-serif; }
+
+    .pencil-texture {
+      background-image: repeating-linear-gradient(-45deg, transparent, transparent 2px, rgba(78, 176, 155, 0.2) 2px, rgba(78, 176, 155, 0.2) 4px);
+    }
+
+    .double-border {
+      border-top: 3px double var(--rule);
+    }
+
+    .dashed-separator {
+      border-top: 1px dashed var(--rule);
+    }
+
+    @view-transition {
+      navigation: auto;
+    }
+
+    ::view-transition-old(main-content) {
+      animation: 0.25s ease-out both fade-out;
+    }
+    ::view-transition-new(main-content) {
+      animation: 0.25s ease-in 0.1s both fade-in;
+    }
+
+    @keyframes fade-out { from { opacity: 1; } to { opacity: 0; } }
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+    ::view-transition-old(root), ::view-transition-new(root) {
+      animation: none;
+      mix-blend-mode: normal;
+    }
+
+    input::placeholder {
+      color: var(--muted);
+      font-style: italic;
+      font-size: 14px;
+    }
+
+    .bubble-oval {
+      border-radius: 50% / 50%;
+    }
+  </style>
+</head>
+<body>
+  <div class="w-full min-h-screen flex flex-col bg-[#FBF6EE]">
+    
+    <!-- Header -->
+    <header class="shrink-0 pt-14 px-4 pb-4 flex items-center justify-between bg-[#FBF6EE]">
+      <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" id="back-to-home" class="w-10 h-10 rounded-full bg-white border border-[#F0E6D6] flex items-center justify-center text-[#45403A]">
+        <iconify-icon icon="lucide:arrow-left" class="text-xl"></iconify-icon>
+      </a>
+      <h1 class="text-xl display-font text-[#45403A]">Thêm môn học</h1>
+      <div class="w-10"></div>
+    </header>
+
+    <!-- Form Content -->
+    <main style="view-transition-name: main-content" class="flex-1 overflow-y-auto px-4 pb-24">
+      
+      <div class="bg-white border border-[#F0E6D6] rounded-[20px] p-6 relative mt-4">
+        <div class="absolute top-0 left-0 w-full h-[3px] border-t-[3px] border-double border-[#F0E6D6] rounded-t-[20px]"></div>
+        
+        <!-- Tên môn học -->
+        <div class="mb-8">
+          <div class="flex items-center gap-2 mb-3">
+            <label class="text-[14px] font-semibold text-[#45403A]">Tên môn học</label>
+            <div class="w-3 h-[1px] bg-[#F0E6D6]"></div>
+          </div>
+          <input type="text" placeholder="Ví dụ: Toán giải tích" class="w-full bg-[#FBF6EE] border border-[#F0E6D6] rounded-[10px] px-4 py-3 text-[15px] focus:outline-none focus:border-[#4EB09B] transition-colors">
+        </div>
+
+        <!-- Chọn màu sắc -->
+        <div class="mb-8">
+          <div class="flex items-center gap-2 mb-4">
+            <label class="text-[14px] font-semibold text-[#45403A]">Chọn màu sắc</label>
+            <div class="w-3 h-[1px] bg-[#F0E6D6]"></div>
+          </div>
+          <div class="grid grid-cols-6 gap-3">
+            <button class="w-10 h-10 rounded-full bg-[#FFD273] border-2 border-transparent transition-all" aria-label="Xoài"></button>
+            <button class="w-10 h-10 rounded-full bg-[#BFAEE3] border-2 border-[#45403A] ring-2 ring-[#BFAEE3]/30 transition-all" aria-label="Tím oải hương"></button>
+            <button class="w-10 h-10 rounded-full bg-[#FEC5E6] border-2 border-transparent transition-all" aria-label="Hồng phấn"></button>
+            <button class="w-10 h-10 rounded-full bg-[#DEB5D7] border-2 border-transparent transition-all" aria-label="Tím hồng"></button>
+            <button class="w-10 h-10 rounded-full bg-[#FBC193] border-2 border-transparent transition-all" aria-label="Đào"></button>
+            <button class="w-10 h-10 rounded-full bg-[#4EB09B] border-2 border-transparent transition-all" aria-label="Teal"></button>
+          </div>
+        </div>
+
+        <div class="dashed-separator my-6"></div>
+
+        <!-- Mục tiêu riêng -->
+        <div class="mb-8">
+          <div class="flex items-center gap-2 mb-4">
+            <label class="text-[14px] font-semibold text-[#45403A]">Mục tiêu hằng ngày (tùy chọn)</label>
+            <div class="w-3 h-[1px] bg-[#F0E6D6]"></div>
+          </div>
+          <div class="flex gap-3">
+            <button class="flex-1 h-12 border border-[#F0E6D6] bubble-oval flex items-center justify-center text-[14px] font-medium text-[#9A9188] data-font">
+              30 <span class="text-[10px] ml-1">phút</span>
+            </button>
+            <button class="flex-1 h-12 border border-[#4EB09B] bubble-oval pencil-texture bg-[#4EB09B]/10 flex items-center justify-center text-[14px] font-bold text-[#4EB09B] data-font">
+              45 <span class="text-[10px] ml-1">phút</span>
+            </button>
+            <button class="flex-1 h-12 border border-[#F0E6D6] bubble-oval flex items-center justify-center text-[14px] font-medium text-[#9A9188] data-font">
+              60 <span class="text-[10px] ml-1">phút</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chọn hình -->
+        <div class="mb-4">
+          <div class="flex items-center gap-2 mb-4">
+            <label class="text-[14px] font-semibold text-[#45403A]">Biểu tượng</label>
+            <div class="w-3 h-[1px] bg-[#F0E6D6]"></div>
+          </div>
+          <div class="flex justify-between items-center">
+            <button class="w-12 h-12 rounded-[12px] bg-[#F1ECFA] border border-[#BFAEE3] text-[#BFAEE3] flex items-center justify-center text-xl transition-all">
+              <iconify-icon icon="lucide:book"></iconify-icon>
+            </button>
+            <button class="w-12 h-12 rounded-[12px] bg-[#FBF6EE] border border-[#F0E6D6] text-[#9A9188] flex items-center justify-center text-xl hover:bg-white">
+              <iconify-icon icon="lucide:pen-tool"></iconify-icon>
+            </button>
+            <button class="w-12 h-12 rounded-[12px] bg-[#FBF6EE] border border-[#F0E6D6] text-[#9A9188] flex items-center justify-center text-xl">
+              <iconify-icon icon="lucide:mountain"></iconify-icon>
+            </button>
+            <button class="w-12 h-12 rounded-[12px] bg-[#FBF6EE] border border-[#F0E6D6] text-[#9A9188] flex items-center justify-center text-xl">
+              <iconify-icon icon="lucide:heart"></iconify-icon>
+            </button>
+            <button class="w-12 h-12 rounded-[12px] bg-[#FBF6EE] border border-[#F0E6D6] text-[#9A9188] flex items-center justify-center text-xl">
+              <iconify-icon icon="lucide:coffee"></iconify-icon>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-8 px-2">
+        <p class="text-[12px] text-[#9A9188] italic text-center leading-relaxed">
+          Gợi ý: Chia nhỏ mục tiêu học tập thành các môn nhỏ giúp bạn dễ dàng theo dõi tiến độ hơn.
+        </p>
+      </div>
+
+    </main>
+
+    <!-- CTA Button -->
+    <div class="fixed bottom-0 left-0 w-full p-4 bg-white/90 backdrop-blur-sm border-t border-[#F0E6D6] pb-10 z-40">
+       <a href="https://p.superdesign.dev/draft/bd211809-846b-4a25-8789-59bc89a6ff1d" id="cta-create-subject" class="w-full h-14 bg-[#4EB09B] text-white rounded-[12px] font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+          <iconify-icon icon="lucide:check-circle" class="text-xl"></iconify-icon>
+          Tạo môn học
+       </a>
+    </div>
+
+  </div>
+</body>
+</html>

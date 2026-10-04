@@ -1,0 +1,20 @@
+# dependencies
+node_modules/
+
+# build output
+dist/
+
+# test output
+coverage/
+playwright-report/
+test-results/
+
+# pwa dev service worker (vite-plugin-pwa)
+dev-dist/
+
+# local env files
+*.local
+
+# server PC (F21)
+server/data/
+server/dist/

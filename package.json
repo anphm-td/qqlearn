@@ -1,0 +1,46 @@
+{
+  "name": "qlearn",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Sổ học TOEIC — PWA ghi chú & theo dõi học TOEIC hằng ngày",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview",
+    "server:build": "tsc -p server/tsconfig.json",
+    "server": "npm run server:build && node server/dist/server/src/index.js",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "@fontsource/be-vietnam-pro": "^5.2.5",
+    "@fontsource/bricolage-grotesque": "^5.2.5",
+    "@fontsource/quicksand": "^5.2.5",
+    "dexie": "^4.0.8",
+    "express": "^5.2.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.1",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.54.0",
+    "@tailwindcss/vite": "^4.1.11",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/express": "^5.0.6",
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.6.0",
+    "fake-indexeddb": "^6.2.5",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4.1.11",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vite-plugin-pwa": "^1.0.2",
+    "vitest": "^3.2.4"
+  }
+}
