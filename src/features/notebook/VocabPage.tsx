@@ -4,26 +4,33 @@ import { Link } from 'react-router-dom'
 import { DangerButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons'
 import EmptyState from '@/components/ui/EmptyState'
 import Icon from '@/components/ui/Icon'
-import PartChip from '@/components/ui/PartChip'
+import SubjectChip from '@/components/ui/SubjectChip'
 import { cn } from '@/components/ui/cn'
 import { repos, todayISO } from '@data/index'
+import { useSubjects } from '@data/useSubjects'
+import { useT } from '@data/useT'
 import { vocabInputSchema } from '@core/schemas'
 import type { Vocab } from '@core/types'
 
-import { inputCls, labelCls, PartPicker, SearchBox, textareaCls } from './bits'
+import { inputCls, labelCls, SubjectPicker, SearchBox, textareaCls } from './bits'
 import { preview } from './display'
 import { filterVocab } from './filters'
 
 /**
- * /sotay/tu-vung — Sổ từ vựng (B5 + B7): CRUD (word, meaning, example, part,
- * sourceTest) + tìm kiếm nhanh + chip Part; tạo từ tự tạo thẻ SRS hộp 1.
+ * /sotay/tu-vung — Sổ từ vựng (B5 + B7): CRUD (word, meaning, example, môn,
+ * sourceTest) + tìm kiếm nhanh + chip môn; tạo từ tự tạo thẻ SRS hộp 1.
  * ≥768px master–detail (danh sách 340px trái + chi tiết phải — mục 10);
  * <768px điều hướng danh sách → chi tiết ngay trong trang (không đổi route).
+ * i18n: mọi chuỗi hiển thị qua useT('notebook') — dict ở src/core/i18n/dict/notebook.ts.
  */
 export default function VocabPage() {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
+  const subjectById = (id: number) => (subjects ?? []).find((s) => s.id === id)
   const [vocabs, setVocabs] = useState<Vocab[] | null>(null)
   const [query, setQuery] = useState('')
-  const [part, setPart] = useState(0)
+  const [subjectId, setSubjectId] = useState(0)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [editing, setEditing] = useState<'new' | Vocab | null>(null)
   const [dueCount, setDueCount] = useState(0)
@@ -49,8 +56,8 @@ export default function VocabPage() {
   }, [reload])
 
   const filtered = useMemo(
-    () => filterVocab(vocabs ?? [], { query, part }),
-    [vocabs, query, part],
+    () => filterVocab(vocabs ?? [], { query, subjectId }),
+    [vocabs, query, subjectId],
   )
   const selected = useMemo(
     () => vocabs?.find((v) => v.id === selectedId) ?? null,
@@ -75,36 +82,36 @@ export default function VocabPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="section-label">sổ tay · từ vựng</p>
+      <p className="section-label">{t('section.vocab')}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="type-display">Từ vựng</h1>
+        <h1 className="type-display">{t('vocab.title')}</h1>
         <Link to="/sotay/tu-vung/on-tap" className="btn btn-primary type-body">
           <Icon name="book" size={18} />
-          Ôn tập · <span className="num">{dueCount}</span> thẻ
+          {t('vocab.reviewLink', { count: dueCount })}
         </Link>
       </div>
 
-      {/* B7 — tìm kiếm nhanh + chip Part */}
-      <section className="paper-card flex flex-col gap-2.5 px-4 py-3" aria-label="Tìm và lọc từ">
-        <SearchBox value={query} onChange={setQuery} placeholder="Tìm từ, nghĩa, ví dụ, đề…" />
-        <PartPicker value={part} onChange={setPart} zeroLabel="Tất cả" />
+      {/* B7 — tìm kiếm nhanh + chip môn */}
+      <section className="paper-card flex flex-col gap-2.5 px-4 py-3" aria-label={t('vocab.filterAria')}>
+        <SearchBox value={query} onChange={setQuery} placeholder={t('vocab.searchPlaceholder')} />
+        <SubjectPicker subjects={activeSubjects} value={subjectId} onChange={setSubjectId} zeroLabel={t('filter.all')} />
       </section>
 
       <div className="grid gap-4 md:grid-cols-[340px_1fr] md:gap-6">
         {/* Danh sách — mobile ẩn khi mở chi tiết */}
         <div className={cn('flex-col gap-3 md:flex', paneOpen ? 'hidden' : 'flex')}>
           <PrimaryButton onClick={() => setEditing('new')}>
-            <Icon name="plus" size={18} /> Thêm từ mới
+            <Icon name="plus" size={18} /> {t('vocab.addNew')}
           </PrimaryButton>
 
-          {vocabs === null && !loadError && <p className="type-body text-muted">Đang mở sổ…</p>}
+          {vocabs === null && !loadError && <p className="type-body text-muted">{t('common.opening')}</p>}
 
           {loadError && (
             <EmptyState
-              message="Chưa mở được dữ liệu từ vựng — có thể server PC chưa chạy hoặc máy chưa đọc được sổ cục bộ."
+              message={t('vocab.loadError')}
               action={
                 <PrimaryButton onClick={() => void reload()}>
-                  <Icon name="study" size={16} /> Tải lại
+                  <Icon name="study" size={16} /> {t('common.reload')}
                 </PrimaryButton>
               }
             />
@@ -112,19 +119,17 @@ export default function VocabPage() {
 
           {vocabs !== null && !loadError && filtered.length === 0 && vocabs.length === 0 && (
             <EmptyState
-              message="Sổ từ vựng còn trống. Thêm từ đầu tiên — ví dụ “commute (v) — đi làm hằng ngày”."
+              message={t('vocab.empty')}
               action={
                 <PrimaryButton onClick={() => setEditing('new')}>
-                  <Icon name="plus" size={18} /> Thêm từ
+                  <Icon name="plus" size={18} /> {t('vocab.addOne')}
                 </PrimaryButton>
               }
             />
           )}
 
           {vocabs !== null && !loadError && filtered.length === 0 && vocabs.length > 0 && (
-            <p className="type-body text-muted">
-              Không có từ nào khớp. Thử từ khoá khác hoặc bỏ chip Part.
-            </p>
+            <p className="type-body text-muted">{t('vocab.noMatch')}</p>
           )}
 
           {vocabs !== null &&
@@ -144,11 +149,16 @@ export default function VocabPage() {
               >
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="type-h2">{v.word}</span>
-                  {v.part > 0 && <PartChip part={v.part} />}
+                  {v.subjectId > 0 && subjects && (
+                    <SubjectChip
+                      name={subjectById(v.subjectId)?.name ?? t('common.deletedSubject')}
+                      colorHex={subjectById(v.subjectId)?.colorHex}
+                    />
+                  )}
                 </div>
                 <p className="type-body text-muted">{preview(v.meaning || v.example, 70)}</p>
                 {v.sourceTest && (
-                  <p className="type-caption mt-1 text-muted">Nguồn: {v.sourceTest}</p>
+                  <p className="type-caption mt-1 text-muted">{t('vocab.source', { source: v.sourceTest })}</p>
                 )}
               </button>
             ))}
@@ -161,7 +171,7 @@ export default function VocabPage() {
           ) : selected ? (
             <VocabDetail vocab={selected} onEdit={() => setEditing(selected)} onDeleted={deleted} onBack={() => setSelectedId(null)} />
           ) : (
-            <EmptyState message="Chọn một từ ở danh sách bên trái để xem nghĩa, ví dụ và thẻ ôn tập." />
+            <EmptyState message={t('vocab.pickPrompt')} />
           )}
         </div>
       </div>
@@ -178,10 +188,13 @@ interface VocabFormProps {
 }
 
 function VocabForm({ initial, onSaved, onCancel }: VocabFormProps) {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
   const [word, setWord] = useState(initial?.word ?? '')
   const [meaning, setMeaning] = useState(initial?.meaning ?? '')
   const [example, setExample] = useState(initial?.example ?? '')
-  const [part, setPart] = useState(initial?.part ?? 0)
+  const [subjectId, setSubjectId] = useState(initial?.subjectId ?? 0)
   const [sourceTest, setSourceTest] = useState(initial?.sourceTest ?? '')
   const [error, setError] = useState('')
   const [saving, setSaving] = useState(false)
@@ -192,11 +205,11 @@ function VocabForm({ initial, onSaved, onCancel }: VocabFormProps) {
       word: word.trim(),
       meaning: meaning.trim(),
       example: example.trim(),
-      part,
+      subjectId,
       sourceTest: sourceTest.trim(),
     })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Dữ liệu chưa hợp lệ.')
+      setError(parsed.error.issues[0]?.message ?? t('common.invalidData'))
       return
     }
     setSaving(true)
@@ -212,67 +225,67 @@ function VocabForm({ initial, onSaved, onCancel }: VocabFormProps) {
       }
     } catch {
       // Lỗi ghi (server PC ngắt / IndexedDB đầy…) — hiện thông báo, không nuốt im lặng.
-      setError('Không lưu được từ — thử lại nhé.')
+      setError(t('vocab.saveError'))
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label="Thông tin từ">
+    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label={t('vocab.formAria')}>
       <div className="md:hidden">
         <SecondaryButton onClick={onCancel}>
-          <Icon name="arrow-left" size={18} /> Danh sách
+          <Icon name="arrow-left" size={18} /> {t('common.toList')}
         </SecondaryButton>
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelCls} htmlFor="vocab-word">Từ</label>
+        <label className={labelCls} htmlFor="vocab-word">{t('vocab.field.word')}</label>
         <input
           id="vocab-word"
           className={inputCls}
           value={word}
           onChange={(e) => setWord(e.target.value)}
-          placeholder="commute (v)"
+          placeholder={t('vocab.placeholder.word')}
           autoFocus
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelCls} htmlFor="vocab-meaning">Nghĩa</label>
+        <label className={labelCls} htmlFor="vocab-meaning">{t('vocab.field.meaning')}</label>
         <input
           id="vocab-meaning"
           className={inputCls}
           value={meaning}
           onChange={(e) => setMeaning(e.target.value)}
-          placeholder="đi làm hằng ngày"
+          placeholder={t('vocab.placeholder.meaning')}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelCls} htmlFor="vocab-example">Câu ví dụ</label>
+        <label className={labelCls} htmlFor="vocab-example">{t('vocab.field.example')}</label>
         <textarea
           id="vocab-example"
           className={textareaCls}
           value={example}
           onChange={(e) => setExample(e.target.value)}
-          placeholder="I commute to work by bike."
+          placeholder={t('vocab.placeholder.example')}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className={labelCls}>Part liên quan</span>
-        <PartPicker value={part} onChange={setPart} zeroLabel="không rõ" />
+        <span className={labelCls}>{t('form.subject')}</span>
+        <SubjectPicker subjects={activeSubjects} value={subjectId} onChange={setSubjectId} zeroLabel={t('form.unassigned')} />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelCls} htmlFor="vocab-source">Nguồn (đề nào)</label>
+        <label className={labelCls} htmlFor="vocab-source">{t('vocab.field.source')}</label>
         <input
           id="vocab-source"
           className={inputCls}
           value={sourceTest}
           onChange={(e) => setSourceTest(e.target.value)}
-          placeholder="ETS 2023 · Đề 2"
+          placeholder={t('vocab.placeholder.source')}
         />
       </div>
 
@@ -280,9 +293,9 @@ function VocabForm({ initial, onSaved, onCancel }: VocabFormProps) {
 
       <div className="flex gap-2">
         <PrimaryButton onClick={() => void submit()} disabled={saving}>
-          {saving ? 'Đang lưu…' : initial ? 'Lưu thay đổi' : 'Lưu vào sổ'}
+          {saving ? t('common.saving') : initial ? t('common.saveChanges') : t('common.saveToNotebook')}
         </PrimaryButton>
-        <SecondaryButton onClick={onCancel}>Bỏ qua</SecondaryButton>
+        <SecondaryButton onClick={onCancel}>{t('common.cancel')}</SecondaryButton>
       </div>
     </section>
   )
@@ -298,6 +311,9 @@ interface VocabDetailProps {
 }
 
 function VocabDetail({ vocab, onEdit, onDeleted, onBack }: VocabDetailProps) {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const subject = (subjects ?? []).find((s) => s.id === vocab.subjectId)
   const [card, setCard] = useState<{ box: number; dueDate: string } | null>(null)
   const [confirming, setConfirming] = useState(false)
   const [removeError, setRemoveError] = useState('')
@@ -335,49 +351,46 @@ function VocabDetail({ vocab, onEdit, onDeleted, onBack }: VocabDetailProps) {
       await onDeleted()
     } catch {
       setConfirming(false)
-      setRemoveError('Không xoá được từ — thử lại nhé.')
+      setRemoveError(t('vocab.deleteError'))
     }
   }
 
   return (
-    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label="Chi tiết từ">
+    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label={t('vocab.detailAria')}>
       <div className="md:hidden">
         <SecondaryButton onClick={onBack}>
-          <Icon name="arrow-left" size={18} /> Danh sách
+          <Icon name="arrow-left" size={18} /> {t('common.toList')}
         </SecondaryButton>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="type-h2">{vocab.word}</h2>
-        {vocab.part > 0 && <PartChip part={vocab.part} />}
+        {vocab.subjectId > 0 && (
+          <SubjectChip name={subject?.name ?? t('common.deletedSubject')} colorHex={subject?.colorHex} />
+        )}
       </div>
 
-      <p className="type-body">{vocab.meaning || <span className="text-muted">Chưa ghi nghĩa.</span>}</p>
+      <p className="type-body">{vocab.meaning || <span className="text-muted">{t('vocab.noMeaning')}</span>}</p>
 
       {vocab.example && (
         <p className="type-body text-muted">“{vocab.example}”</p>
       )}
       {vocab.sourceTest && (
-        <p className="type-caption text-muted">Nguồn: {vocab.sourceTest}</p>
+        <p className="type-caption text-muted">{t('vocab.source', { source: vocab.sourceTest })}</p>
       )}
 
       <p className="type-caption text-muted">
-        {card ? (
-          <>
-            Thẻ ôn tập: hộp <span className="num">{card.box}</span>/5 · đến hạn{' '}
-            <span className="num">{card.dueDate}</span>
-          </>
-        ) : (
-          'Chưa có thẻ ôn cho từ này — vào trang Ôn tập để tạo.'
-        )}
+        {card
+          ? t('vocab.cardStatus', { box: card.box, due: card.dueDate })
+          : t('vocab.noCard')}
       </p>
 
       <div className="flex gap-2">
         <SecondaryButton onClick={onEdit}>
-          <Icon name="pen" size={18} /> Sửa
+          <Icon name="pen" size={18} /> {t('common.edit')}
         </SecondaryButton>
         <DangerButton onClick={() => void remove()}>
-          {confirming ? 'Chắc chắn xoá?' : 'Xoá từ'}
+          {confirming ? t('common.confirmDelete') : t('vocab.deleteWord')}
         </DangerButton>
       </div>
       {removeError && (

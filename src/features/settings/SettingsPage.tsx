@@ -13,6 +13,8 @@ import {
 } from '@data'
 import type { DataMode } from '@data'
 import { useSettings } from '@data/useSettings'
+import { useT } from '@data/useT'
+import type { Lang } from '@core/i18n'
 import type {
   ChatMessage,
   DailyNote,
@@ -21,6 +23,7 @@ import type {
   PhotoRefType,
   Score,
   Session,
+  Subject,
   SrsCard,
   Vocab,
 } from '@core/types'
@@ -39,7 +42,15 @@ import {
   withBom,
 } from '@/features/system/exportData'
 import type { BackupData, BackupPhotoRow } from '@/features/system/exportData'
-import { INSTALL_STEPS, OTHER_DEVICE_HINTS, detectPlatform } from '@/features/system/pwaInstall'
+import { INSTALL_STEP_KEYS, OTHER_DEVICE_HINT_KEYS, detectPlatform } from '@/features/system/pwaInstall'
+import {
+  LAN_FETCH_ERROR_KEY,
+  PHONE_CONNECT_STEP_KEYS,
+  fetchLanInfo,
+  lanSvgDataUrl,
+  phoneConnectBaseUrl,
+} from '@/features/system/phoneConnect'
+import type { LanInfo } from '@/features/system/phoneConnect'
 import { stepTime } from '@/features/system/reminderSchedule'
 import { saveTextFile, stampFileName } from '@/features/system/saveFile'
 import {
@@ -48,18 +59,22 @@ import {
   saveNoteReminderTime,
   useNotificationPermission,
 } from '@/features/system/useReminders'
-import type { ReminderPermission } from '@/features/system/useReminders'
 
 /**
  * /caidat — Cài đặt (nhóm D — hệ thống):
  *  - Nguồn dữ liệu (F21): "Trên máy này" (IndexedDB) / "Qua server PC"
  *    (npm run server — Express + SQLite) + ô địa chỉ server; đổi xong app tải lại.
- *  - Mục tiêu hằng ngày / điểm mục tiêu / ngày thi / giờ nhắc — THỜI GIAN TỰ CHỈNH
+ *  - Kết nối điện thoại: hiện mã QR + địa chỉ LAN để điện thoại cùng Wi-Fi mở Sổ
+ *    (logic ở src/features/system/phoneConnect.ts, server trả GET /api/lan).
+ *  - Mục tiêu hằng ngày / giờ nhắc — THỜI GIAN TỰ CHỈNH
  *    (mục 3 design-system: stepper −/+ VÀ ô nhập tự do; preset chỉ là gợi ý).
+ *    (Điểm mục tiêu/ngày thi của khung TOEIC cũ đã bỏ khỏi UI — đa môn hoá.)
  *  - Nhịp học với đồng hồ (pomodoro) + địa chỉ máy trợ lý (ragBaseUrl cho chat RAG).
  *  - Nhắc lịch (C12): quyền thông báo hệ thống (banner fallback do AppLayout giữ).
  *  - Hỏi giờ học khi mở app (check-in): bật/tắt lời hỏi "vừa học bao nhiêu phút"
  *    mỗi lần mở Sổ — card hỏi do AppLayout gắn (CheckinPrompt.tsx).
+ *  - Ngôn ngữ (design-system.md mục 12): chip "Tiếng Việt"/"English" — bấm là
+ *    updateSettings({ language }) áp dụng NGAY toàn Sổ qua useT (publish/listen).
  *  - Dữ liệu của bạn (E18): tải sổ ghi chú (văn bản) + bảng (bảng tính, BOM tiếng Việt)
  *    + sao lưu toàn bộ / khôi phục — logic thuần ở src/features/system/exportData.ts.
  *  - Hướng dẫn cài Sổ vào máy (PWA).
@@ -71,6 +86,7 @@ const WIDE_FROM = '0000-01-01'
 const WIDE_TO = '9999-12-31'
 
 interface ExportBundle {
+  subjects: Subject[]
   sessions: Session[]
   dailyNotes: DailyNote[]
   vocab: Vocab[]
@@ -83,6 +99,11 @@ interface ExportBundle {
 interface StatusMessage {
   kind: 'ok' | 'err'
   text: string
+}
+
+/** Bộ đổi subjectId → tên môn cho xuất CSV (môn đã xoá → số id dự phòng). */
+function subjectNameOf(b: ExportBundle): (id: number) => string | undefined {
+  return (id) => b.subjects.find((s) => s.id === id)?.name
 }
 
 async function photoToRow(photo: Photo): Promise<BackupPhotoRow> {
@@ -109,6 +130,7 @@ interface StepperFieldProps {
 }
 
 function StepperField({ label, value, min, max, step, unit, presets, onCommit }: StepperFieldProps) {
+  const { t } = useT('settings')
   const [draft, setDraft] = useState(String(value))
   const [editing, setEditing] = useState(false)
 
@@ -134,7 +156,7 @@ function StepperField({ label, value, min, max, step, unit, presets, onCommit }:
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Giảm ${label} ${step} ${unit}`}
+          aria-label={t('stepper.stepDownAria', { label, step, unit })}
           onClick={() => commit(String(value - step))}
         >
           −
@@ -144,7 +166,7 @@ function StepperField({ label, value, min, max, step, unit, presets, onCommit }:
             className="stepper-num w-14 bg-transparent text-center outline-none"
             inputMode="numeric"
             value={draft}
-            aria-label={`${label} — nhập số`}
+            aria-label={t('stepper.inputAria', { label })}
             onChange={(e) => setDraft(e.target.value)}
             onFocus={() => setEditing(true)}
             onBlur={() => {
@@ -160,7 +182,7 @@ function StepperField({ label, value, min, max, step, unit, presets, onCommit }:
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Tăng ${label} ${step} ${unit}`}
+          aria-label={t('stepper.stepUpAria', { label, step, unit })}
           onClick={() => commit(String(value + step))}
         >
           +
@@ -178,7 +200,7 @@ function StepperField({ label, value, min, max, step, unit, presets, onCommit }:
               {p} {unit}
             </button>
           ))}
-          <span className="type-caption text-muted">chỉ là gợi ý — nhập số tùy ý ở trên</span>
+          <span className="type-caption text-muted">{t('stepper.presetsHint')}</span>
         </div>
       )}
     </div>
@@ -194,6 +216,7 @@ interface TimeFieldProps {
 }
 
 function TimeField({ label, value, fallback, onCommit }: TimeFieldProps) {
+  const { t } = useT('settings')
   const base = value !== '' ? value : fallback
   return (
     <div className="flex items-center justify-between gap-3">
@@ -202,7 +225,7 @@ function TimeField({ label, value, fallback, onCommit }: TimeFieldProps) {
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Lùi ${label} 15 phút`}
+          aria-label={t('time.backAria', { label })}
           onClick={() => onCommit(stepTime(base, -15))}
         >
           −
@@ -210,14 +233,14 @@ function TimeField({ label, value, fallback, onCommit }: TimeFieldProps) {
         <input
           type="time"
           value={value}
-          aria-label={`${label} — chọn giờ`}
+          aria-label={t('time.inputAria', { label })}
           onChange={(e) => onCommit(e.target.value)}
           className="num w-[84px] rounded-lg border border-rule bg-bg px-2 py-1.5 text-center text-[15px] outline-none"
         />
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Gia hạn ${label} 15 phút`}
+          aria-label={t('time.forwardAria', { label })}
           onClick={() => onCommit(stepTime(base, 15))}
         >
           +
@@ -273,13 +296,6 @@ interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
 }
 
-const PERMISSION_TEXT: Record<ReminderPermission, string> = {
-  granted: 'Đã cấp quyền — Sổ sẽ nhắc qua thông báo hệ thống.',
-  default: 'Chưa cấp quyền nhắc.',
-  denied: 'Quyền nhắc đang bị chặn — bật lại trong phần quyền thông báo của trình duyệt.',
-  unsupported: 'Trình duyệt này chưa hỗ trợ thông báo hệ thống — Sổ sẽ nhắc ngay trong app.',
-}
-
 interface DataSourceSectionProps {
   dataMode: DataMode
   onDataModeChange: (mode: DataMode) => void
@@ -301,15 +317,16 @@ function DataSourceSection({
   onApply,
   applying,
 }: DataSourceSectionProps) {
+  const { t } = useT('settings')
   return (
     <section className="paper-card px-4 pt-3 pb-4">
-      <p className="section-label">nguồn dữ liệu</p>
+      <p className="section-label">{t('ds.label')}</p>
       <div className="mt-3 flex flex-col gap-3">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Chọn nguồn dữ liệu">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('ds.groupAria')}>
           {(
             [
-              ['local', 'Trên máy này'],
-              ['server', 'Qua server PC'],
+              ['local', t('ds.local')],
+              ['server', t('ds.server')],
             ] as const
           ).map(([value, lbl]) => (
             <button
@@ -325,26 +342,24 @@ function DataSourceSection({
         </div>
 
         {dataMode === 'local' ? (
-          <p className="type-caption text-muted">
-            Sổ lưu ngay trên máy này — học offline vẫn vào được, không cần mạng.
-          </p>
+          <p className="type-caption text-muted">{t('ds.localHint')}</p>
         ) : (
           <>
             <TextField
-              label="Địa chỉ server PC"
+              label={t('ds.serverUrlLabel')}
               value={serverUrl}
               placeholder={DEFAULT_SERVER_URL}
-              hint="Chạy “npm run server” trên máy tính — Sổ sẽ đọc/ghi sổ qua server đó. Điện thoại dùng địa chỉ LAN hiện khi server khởi động (vd. http://192.168.1.10:5178)."
+              hint={t('ds.serverUrlHint')}
               onCommit={onServerUrlChange}
             />
             <p className="type-caption rounded-lg border border-coral bg-pink-soft px-3 py-2">
-              Khi chuyển nguồn, Sổ đọc/ghi theo nơi đã chọn — dữ liệu hai nơi không tự trộn.
+              {t('ds.switchWarning')}
             </p>
           </>
         )}
         <div>
           <SecondaryButton className="px-3 py-2" onClick={onApply} disabled={applying}>
-            {applying ? 'Đang áp dụng…' : 'Áp dụng và tải lại Sổ'}
+            {applying ? t('ds.applying') : t('ds.apply')}
           </SecondaryButton>
         </div>
       </div>
@@ -352,8 +367,139 @@ function DataSourceSection({
   )
 }
 
+type PhoneConnectPhase = 'idle' | 'loading' | 'error' | 'ready'
+
+/**
+ * Phần "Kết nối điện thoại" — hiện mã QR + địa chỉ để điện thoại cùng Wi-Fi mở Sổ.
+ * Bấm "Hiện mã QR" mới hỏi server PC GET /api/lan (đi đúng đường dữ liệu của nguồn
+ * đang chọn: server → serverUrl đã nhập, local → localhost:5178) — logic thuần ở
+ * src/features/system/phoneConnect.ts.
+ */
+function PhoneConnectSection() {
+  const { t } = useT('settings')
+  const [phase, setPhase] = useState<PhoneConnectPhase>('idle')
+  const [info, setInfo] = useState<LanInfo | null>(null)
+
+  const load = useCallback(async () => {
+    setPhase('loading')
+    try {
+      const data = await fetchLanInfo(phoneConnectBaseUrl(getDataMode(), getServerUrl()))
+      setInfo(data)
+      setPhase('ready')
+    } catch {
+      setInfo(null)
+      setPhase('error')
+    }
+  }, [])
+
+  return (
+    <section className="paper-card px-4 pt-3 pb-4">
+      <p className="section-label">{t('pc.label')}</p>
+      <div className="mt-3 flex flex-col gap-3">
+        {phase === 'idle' && (
+          <>
+            <p className="type-body">{t('pc.intro')}</p>
+            <div>
+              <SecondaryButton className="px-3 py-2" onClick={() => void load()}>
+                {t('pc.showQr')}
+              </SecondaryButton>
+            </div>
+          </>
+        )}
+        {phase === 'loading' && <p className="type-body text-muted">{t('pc.loading')}</p>}
+        {phase === 'error' && (
+          <>
+            <p
+              className="type-caption rounded-lg border border-coral bg-pink-soft px-3 py-2"
+              role="alert"
+            >
+              {t(LAN_FETCH_ERROR_KEY)}
+            </p>
+            <div>
+              <SecondaryButton className="px-3 py-2" onClick={() => void load()}>
+                {t('pc.retry')}
+              </SecondaryButton>
+            </div>
+          </>
+        )}
+        {phase === 'ready' && info && (
+          <>
+            <img
+              src={lanSvgDataUrl(info.qrSvg)}
+              alt={t('pc.qrAlt')}
+              width={176}
+              height={176}
+              className="mx-auto h-44 w-44 rounded-lg border border-rule bg-white"
+            />
+            <p className="type-caption text-muted">{t('pc.urlsHint')}</p>
+            <ul className="flex flex-col gap-1">
+              {info.urls.map((url) => (
+                <li key={url} className="type-body break-all">
+                  {url}
+                </li>
+              ))}
+            </ul>
+            <ol className="ml-5 list-decimal space-y-1">
+              {PHONE_CONNECT_STEP_KEYS.map((key) => (
+                <li key={key} className="type-body">
+                  {t(key)}
+                </li>
+              ))}
+            </ol>
+            <p className="type-caption text-muted">{t('pc.sameDataNote')}</p>
+          </>
+        )}
+      </div>
+    </section>
+  )
+}
+
+/**
+ * Phần "Ngôn ngữ" (design-system.md mục 12) — 2 chip "Tiếng Việt" / "English".
+ * Bấm là updateSettings({ language }) NGAY: publish/listen của useSettings làm
+ * mọi useT đang mount render lại — không cần nút áp dụng, không cần tải lại.
+ * Chip dùng đúng markup part-chip của dự án (như chips "Nguồn dữ liệu" — nhận
+ * click chuột thật).
+ */
+function LanguageSection({
+  language,
+  onSelect,
+}: {
+  language: Lang
+  onSelect: (lang: Lang) => void
+}) {
+  const { t } = useT('settings')
+  return (
+    <section className="paper-card px-4 pt-3 pb-4">
+      <p className="section-label">{t('lang.label')}</p>
+      <div className="mt-3 flex flex-col gap-3">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label={t('lang.groupAria')}>
+          {(
+            [
+              ['vi', t('lang.vi')],
+              ['en', t('lang.en')],
+            ] as const
+          ).map(([value, lbl]) => (
+            <button
+              key={value}
+              type="button"
+              className={cn('part-chip', language === value && 'part-chip--active')}
+              aria-pressed={language === value}
+              onClick={() => onSelect(value)}
+            >
+              {lbl}
+            </button>
+          ))}
+        </div>
+        <p className="type-caption text-muted">{t('lang.desc')}</p>
+      </div>
+    </section>
+  )
+}
+
 export default function SettingsPage() {
   const { settings, updateSettings, loading } = useSettings()
+  const { t } = useT('settings')
   const [noteTime, setNoteTime] = useState<string>(() => loadNoteReminderTime())
   // Chỉ quản quyền thông báo — scheduler nhắc (C12) mount một lần ở AppLayout.
   const { permission, requestPermission } = useNotificationPermission()
@@ -385,7 +531,8 @@ export default function SettingsPage() {
   const platform = useMemo(() => detectPlatform(navigator.userAgent), [])
 
   const loadBundle = useCallback(async (): Promise<ExportBundle> => {
-    const [sessions, dailyNotes, vocab, mistakes, scores, srsCards] = await Promise.all([
+    const [subjects, sessions, dailyNotes, vocab, mistakes, scores, srsCards] = await Promise.all([
+      repos.subjects.list(),
       repos.sessions.listBetween(WIDE_FROM, WIDE_TO),
       repos.notes.listBetween(WIDE_FROM, WIDE_TO),
       repos.vocab.list(),
@@ -406,7 +553,7 @@ export default function SettingsPage() {
       if (m.id !== undefined) await collect('mistake', String(m.id))
     }
     for (const n of dailyNotes) await collect('note', n.date)
-    return { sessions, dailyNotes, vocab, mistakes, scores, srsCards, photos }
+    return { subjects, sessions, dailyNotes, vocab, mistakes, scores, srsCards, photos }
   }, [])
 
   useEffect(() => {
@@ -416,13 +563,13 @@ export default function SettingsPage() {
         const b = await loadBundle()
         if (alive) setBundle(b)
       } catch {
-        if (alive) setStatus({ kind: 'err', text: 'Chưa đọc được dữ liệu trong Sổ để xuất.' })
+        if (alive) setStatus({ kind: 'err', text: t('data.readFail') })
       }
     })()
     return () => {
       alive = false
     }
-  }, [loadBundle])
+  }, [loadBundle, t])
 
   useEffect(() => {
     const onPrompt = (e: Event) => {
@@ -444,26 +591,26 @@ export default function SettingsPage() {
         saveTextFile(`${stampFileName(base, new Date())}.${ext}`, mime, make(b))
         setStatus({ kind: 'ok', text: okText })
       } catch {
-        setStatus({ kind: 'err', text: 'Chưa tải được — thử lại nhé.' })
+        setStatus({ kind: 'err', text: t('data.downloadFail') })
       } finally {
         setBusy(false)
       }
     },
-    [bundle, loadBundle],
+    [bundle, loadBundle, t],
   )
 
   const handleExportMarkdown = () =>
     download(
-      'so-hoc-toeic',
+      'qqlearn',
       'md',
       'text/markdown;charset=utf-8',
-      'Đã tải sổ ghi chú (tệp văn bản) về máy.',
-      (b) => exportMarkdown(b.dailyNotes, b.sessions, new Date()),
+      t('data.markdownOk'),
+      (b) => exportMarkdown(b.dailyNotes, b.sessions, new Date(), (id) => b.subjects.find((s) => s.id === id)?.name),
     )
 
-  const handleExportCsv = (base: string, label: string, make: (b: ExportBundle) => string) =>
+  const handleExportCsv = (base: string, labelKey: string, make: (b: ExportBundle) => string) =>
     // BOM UTF-8 để Excel mở đúng tiếng Việt (withBom trong exportData.ts).
-    download(base, 'csv', 'text/csv;charset=utf-8', `Đã tải bảng ${label} về máy.`, make)
+    download(base, 'csv', 'text/csv;charset=utf-8', t('data.csvOk', { label: t(labelKey) }), make)
 
   const handleBackup = async () => {
     if (!settings) return
@@ -487,6 +634,7 @@ export default function SettingsPage() {
             onboardingDone: settings.onboardingDone,
             pomodoro: settings.pomodoro,
           },
+          subjects: b.subjects,
           sessions: b.sessions,
           dailyNotes: b.dailyNotes,
           vocab: b.vocab,
@@ -499,9 +647,9 @@ export default function SettingsPage() {
         new Date(),
       )
       saveTextFile(`${stampFileName('sao-luc-day-du', new Date())}.json`, 'application/json', serializeBackup(data))
-      setStatus({ kind: 'ok', text: 'Đã lưu bản sao lưu đầy đủ về máy.' })
+      setStatus({ kind: 'ok', text: t('data.backupOk') })
     } catch {
-      setStatus({ kind: 'err', text: 'Chưa tạo được bản sao lưu — thử lại nhé.' })
+      setStatus({ kind: 'err', text: t('data.backupFail') })
     } finally {
       setBusy(false)
     }
@@ -527,20 +675,18 @@ export default function SettingsPage() {
     setBusy(true)
     setStatus(null)
     try {
-      const parsed = parseBackup(await file.text())
+      const parsed = parseBackup(await file.text(), t)
       if (!parsed.ok) {
         setStatus({ kind: 'err', text: parsed.error })
         return
       }
-      const proceed = window.confirm(
-        'Khôi phục sẽ THAY THẾ toàn bộ dữ liệu hiện tại bằng dữ liệu trong bản sao lưu (nguồn dữ liệu đang chọn không đổi). Tiếp tục?',
-      )
+      const proceed = window.confirm(t('data.restoreConfirm'))
       if (!proceed) return
       await applyRestore(parsed.data)
       setBundle(await loadBundle())
-      setStatus({ kind: 'ok', text: 'Đã khôi phục xong từ bản sao lưu.' })
+      setStatus({ kind: 'ok', text: t('data.restoreOk') })
     } catch {
-      setStatus({ kind: 'err', text: 'Không đọc được tệp bản sao lưu.' })
+      setStatus({ kind: 'err', text: t('data.restoreReadFail') })
     } finally {
       setBusy(false)
     }
@@ -558,10 +704,10 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="mx-auto flex w-full max-w-[600px] flex-col gap-4">
-        <p className="section-label">cài đặt</p>
-        <h1 className="type-display">Cài đặt</h1>
+        <p className="section-label">{t('page.label')}</p>
+        <h1 className="type-display">{t('page.title')}</h1>
         <section className="paper-card px-4 py-4">
-          <p className="type-body text-muted">đang mở Sổ…</p>
+          <p className="type-body text-muted">{t('page.loading')}</p>
         </section>
       </div>
     )
@@ -572,11 +718,10 @@ export default function SettingsPage() {
     // độ "Qua server PC") — vẫn mở phần Nguồn dữ liệu để người học đổi về local.
     return (
       <div className="mx-auto flex w-full max-w-[600px] flex-col gap-4">
-        <p className="section-label">cài đặt</p>
-        <h1 className="type-display">Cài đặt</h1>
+        <p className="section-label">{t('page.label')}</p>
+        <h1 className="type-display">{t('page.title')}</h1>
         <p className="type-caption rounded-lg border border-coral bg-pink-soft px-3 py-2" role="alert">
-          Chưa đọc được cài đặt từ nguồn dữ liệu đang dùng. Có thể server PC đã tắt —
-          hãy mở server trên máy tính hoặc chuyển tạm về "Trên máy này".
+          {t('page.noSettings')}
         </p>
         <DataSourceSection
           dataMode={dataMode}
@@ -590,17 +735,39 @@ export default function SettingsPage() {
     )
   }
 
-  const csvExports: { base: string; label: string; make: (b: ExportBundle) => string }[] = [
-    { base: 'buoi-hoc', label: 'buổi học', make: (b) => withBom(sessionsCsv(b.sessions)) },
-    { base: 'tu-vung', label: 'từ vựng', make: (b) => withBom(vocabCsv(b.vocab)) },
-    { base: 'loi-sai', label: 'lỗi sai', make: (b) => withBom(mistakesCsv(b.mistakes)) },
-    { base: 'diem', label: 'điểm luyện đề', make: (b) => withBom(scoresCsv(b.scores)) },
+  const csvExports: { base: string; labelKey: string; make: (b: ExportBundle) => string }[] = [
+    {
+      base: 'buoi-hoc',
+      labelKey: 'data.csv.sessions',
+      make: (b) => withBom(sessionsCsv(b.sessions, subjectNameOf(b))),
+    },
+    {
+      base: 'tu-vung',
+      labelKey: 'data.csv.vocab',
+      make: (b) => withBom(vocabCsv(b.vocab, subjectNameOf(b))),
+    },
+    {
+      base: 'loi-sai',
+      labelKey: 'data.csv.mistakes',
+      make: (b) => withBom(mistakesCsv(b.mistakes, subjectNameOf(b))),
+    },
+    {
+      base: 'diem',
+      labelKey: 'data.csv.scores',
+      make: (b) => withBom(scoresCsv(b.scores, subjectNameOf(b))),
+    },
   ]
 
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col gap-4">
-      <p className="section-label">cài đặt</p>
-      <h1 className="type-display">Cài đặt</h1>
+      <p className="section-label">{t('page.label')}</p>
+      <h1 className="type-display">{t('page.title')}</h1>
+
+      {/* ===== Ngôn ngữ (design-system.md mục 12) — áp dụng ngay toàn bộ Sổ ===== */}
+      <LanguageSection
+        language={settings.language}
+        onSelect={(lang) => void updateSettings({ language: lang })}
+      />
 
       {/* ===== Nguồn dữ liệu (F21) ===== */}
       <DataSourceSection
@@ -612,80 +779,49 @@ export default function SettingsPage() {
         applying={applyingMode}
       />
 
+      {/* ===== Kết nối điện thoại — quét QR để mở Sổ trên điện thoại cùng Wi-Fi ===== */}
+      <PhoneConnectSection />
+
       {/* ===== Mục tiêu hằng ngày ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label">mục tiêu hằng ngày</p>
+        <p className="section-label">{t('goal.label')}</p>
         <div className="mt-3 flex flex-col gap-5">
           <StepperField
-            label="Học mỗi ngày"
+            label={t('goal.field')}
             value={settings.dailyGoalMinutes}
             min={5}
             max={1440}
             step={5}
-            unit="phút"
+            unit={t('goal.unit')}
             presets={[15, 25, 45, 60]}
             onCommit={(n) => void updateSettings({ dailyGoalMinutes: n })}
           />
-          <p className="type-caption text-muted -mt-3 text-center">
-            Bấm − / + mỗi lần 5 phút, hoặc chạm vào số để nhập tùy ý.
-          </p>
-          <hr className="dashed-rule" />
-          <StepperField
-            label="Điểm mục tiêu TOEIC"
-            value={settings.targetScore}
-            min={10}
-            max={990}
-            step={5}
-            unit="điểm"
-            presets={[450, 600, 740]}
-            onCommit={(n) => void updateSettings({ targetScore: n })}
-          />
-          <div className="flex items-center justify-between gap-3">
-            <span className="type-body">Ngày thi</span>
-            <div className="flex items-center gap-2">
-              <input
-                type="date"
-                value={settings.examDate}
-                aria-label="Ngày thi"
-                onChange={(e) => void updateSettings({ examDate: e.target.value })}
-                className="num rounded-lg border border-rule bg-bg px-2 py-1.5 text-center text-[15px] outline-none"
-              />
-              {settings.examDate !== '' && (
-                <button
-                  type="button"
-                  className="type-caption text-muted underline"
-                  onClick={() => void updateSettings({ examDate: '' })}
-                >
-                  bỏ
-                </button>
-              )}
-            </div>
-          </div>
+          <p className="type-caption text-muted -mt-3 text-center">{t('goal.hint')}</p>
         </div>
       </section>
 
       {/* ===== Nhịp học với đồng hồ (pomodoro) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label">nhịp học với đồng hồ</p>
+        <p className="section-label">{t('pom.label')}</p>
         <div className="mt-3 flex flex-col gap-5">
           <StepperField
-            label="Một phiên tập trung"
+            label={t('pom.focus')}
             value={settings.pomodoro.focusMin}
             min={1}
             max={240}
             step={5}
-            unit="phút"
+            unit={t('goal.unit')}
             presets={[15, 25, 45]}
             onCommit={(n) => void updateSettings({ pomodoro: { ...settings.pomodoro, focusMin: n } })}
           />
           <hr className="dashed-rule" />
           <StepperField
-            label="Nghỉ giữa hai phiên"
+            label={t('pom.break')}
             value={settings.pomodoro.breakMin}
             min={1}
             max={120}
             step={5}
-            unit="phút"
+            unit={t('goal.unit')}
             presets={[5, 10, 15]}
             onCommit={(n) => void updateSettings({ pomodoro: { ...settings.pomodoro, breakMin: n } })}
           />
@@ -694,16 +830,16 @@ export default function SettingsPage() {
 
       {/* ===== Nhắc lịch (C12) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label label-dot-coral">nhắc lịch</p>
+        <p className="section-label label-dot-coral">{t('remind.label')}</p>
         <div className="mt-3 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <span className="type-body flex items-center gap-2">
               <Icon name="bell" size={18} className="text-muted" />
-              Thông báo hệ thống
+              {t('remind.notifTitle')}
             </span>
             {permission === 'default' && (
               <SecondaryButton className="px-3 py-2" onClick={() => void requestPermission()}>
-                Cho phép nhắc
+                {t('remind.allow')}
               </SecondaryButton>
             )}
           </div>
@@ -716,22 +852,22 @@ export default function SettingsPage() {
                   : 'type-caption text-muted'
             }
           >
-            {PERMISSION_TEXT[permission]}
+            {t(`remind.perm.${permission}`)}
           </p>
           {permission !== 'granted' && (
             <p className="type-caption rounded-lg border border-coral bg-pink-soft px-3 py-2">
-              Khi chưa cấp quyền, lời nhắc vẫn hiện ngay trong app khi Sổ đang mở.
+              {t('remind.permFallback')}
             </p>
           )}
           <hr className="dashed-rule" />
           <TimeField
-            label="Nhắc bắt đầu học"
+            label={t('remind.start')}
             value={settings.reminderTime}
             fallback="19:00"
             onCommit={(v) => void updateSettings({ reminderTime: v })}
           />
           <TimeField
-            label="Nhắc ghi chú cuối ngày"
+            label={t('remind.note')}
             value={noteTime}
             fallback={DEFAULT_NOTE_REMINDER}
             onCommit={(v) => {
@@ -739,24 +875,20 @@ export default function SettingsPage() {
               saveNoteReminderTime(v)
             }}
           />
-          <p className="type-caption text-muted">
-            Bấm − / + để chỉnh 15 phút một lần. Lời nhắc chạy khi Sổ đang mở trên máy này.
-          </p>
+          <p className="type-caption text-muted">{t('remind.hint')}</p>
         </div>
       </section>
 
       {/* ===== Hỏi giờ học khi mở app (check-in) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label">hỏi giờ học khi mở app</p>
+        <p className="section-label">{t('checkin.label')}</p>
         <div className="mt-3 flex items-center justify-between gap-3">
-          <p className="type-body flex-1">
-            Mỗi lần mở app, hỏi bạn vừa học bao nhiêu phút để lưu vào sổ.
-          </p>
+          <p className="type-body flex-1">{t('checkin.desc')}</p>
           <button
             type="button"
             role="switch"
             aria-checked={settings.checkinEnabled}
-            aria-label="Hỏi giờ học khi mở app"
+            aria-label={t('checkin.aria')}
             onClick={() => void updateSettings({ checkinEnabled: !settings.checkinEnabled })}
             className={
               settings.checkinEnabled
@@ -773,20 +905,18 @@ export default function SettingsPage() {
             />
           </button>
         </div>
-        <p className="type-caption text-muted mt-2">
-          Bỏ qua hoặc lưu đều được — Sổ không hỏi lại ngay trong 15 phút.
-        </p>
+        <p className="type-caption text-muted mt-2">{t('checkin.hint')}</p>
       </section>
 
       {/* ===== Trợ lý hỏi đáp (RAG) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label label-dot-lavender">trợ lý hỏi đáp</p>
+        <p className="section-label label-dot-lavender">{t('rag.label')}</p>
         <div className="mt-3">
           <TextField
-            label="Địa chỉ máy trợ lý"
+            label={t('rag.addrLabel')}
             value={settings.ragBaseUrl}
             placeholder="http://localhost:8000"
-            hint="Trang Trò chuyện sẽ hỏi đáp với trợ lý tại địa chỉ này — bỏ trống nếu chưa dùng."
+            hint={t('rag.hint')}
             onCommit={(v) => void updateSettings({ ragBaseUrl: v })}
           />
         </div>
@@ -794,13 +924,13 @@ export default function SettingsPage() {
 
       {/* ===== Dữ liệu của bạn (E18) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label label-dot-mauve">dữ liệu của bạn</p>
+        <p className="section-label label-dot-mauve">{t('data.label')}</p>
         <div className="mt-3 flex flex-col gap-3">
           <PrimaryButton onClick={() => void handleBackup()} disabled={busy}>
-            Sao lưu toàn bộ vào máy
+            {t('data.backup')}
           </PrimaryButton>
           <SecondaryButton onClick={() => fileRef.current?.click()} disabled={busy}>
-            Khôi phục từ bản sao lưu
+            {t('data.restore')}
           </SecondaryButton>
           <input
             ref={fileRef}
@@ -810,30 +940,27 @@ export default function SettingsPage() {
             onChange={(e) => void handleImportFile(e)}
           />
           <hr className="dashed-rule" />
-          <p className="type-caption text-muted">Tải một phần dữ liệu ra tệp riêng:</p>
+          <p className="type-caption text-muted">{t('data.exportHint')}</p>
           <div className="flex flex-wrap gap-2">
             <SecondaryButton
               className="px-3 py-2"
               disabled={busy}
               onClick={() => void handleExportMarkdown()}
             >
-              sổ ghi chú (văn bản)
+              {t('data.notesExport')}
             </SecondaryButton>
             {csvExports.map((item) => (
               <SecondaryButton
                 key={item.base}
                 className="px-3 py-2"
                 disabled={busy}
-                onClick={() => void handleExportCsv(item.base, item.label, item.make)}
+                onClick={() => void handleExportCsv(item.base, item.labelKey, item.make)}
               >
-                {item.label} (bảng)
+                {t('data.csvButton', { label: t(item.labelKey) })}
               </SecondaryButton>
             ))}
           </div>
-          <p className="type-caption text-muted">
-            Bảng tải về mở thẳng được bằng Excel. Mọi ghi chú và thời gian học nằm ngay trên máy
-            này — sao lưu thường xuyên để không mất dữ liệu nhé.
-          </p>
+          <p className="type-caption text-muted">{t('data.excelNote')}</p>
           {status && (
             <p
               role="status"
@@ -851,22 +978,20 @@ export default function SettingsPage() {
 
       {/* ===== Cài Sổ vào máy (PWA) ===== */}
       <section className="paper-card px-4 pt-3 pb-4">
-        <p className="section-label label-dot-butter">cài sổ vào máy</p>
+        <p className="section-label label-dot-butter">{t('pwa.label')}</p>
         <div className="mt-3 flex flex-col gap-3">
           {installEvt && (
-            <PrimaryButton onClick={() => void handleInstall()}>Cài ngay vào máy</PrimaryButton>
+            <PrimaryButton onClick={() => void handleInstall()}>{t('pwa.install')}</PrimaryButton>
           )}
           <ol className="ml-5 list-decimal space-y-1">
-            {INSTALL_STEPS[platform].map((step) => (
-              <li key={step} className="type-body">
-                {step}
+            {INSTALL_STEP_KEYS[platform].map((key) => (
+              <li key={key} className="type-body">
+                {t(key)}
               </li>
             ))}
           </ol>
-          <p className="type-caption text-muted">{OTHER_DEVICE_HINTS[platform]}</p>
-          <p className="type-caption text-muted">
-            Cài xong, Sổ mở như một ứng dụng riêng — học ở đâu cũng vào nhanh.
-          </p>
+          <p className="type-caption text-muted">{t(OTHER_DEVICE_HINT_KEYS[platform])}</p>
+          <p className="type-caption text-muted">{t('pwa.footer')}</p>
         </div>
       </section>
     </div>

@@ -16,22 +16,22 @@ import {
 } from './todayLogic'
 
 describe('summarizeDay — tổng hợp buổi học trong ngày', () => {
-  it('cộng durationMin, đếm buổi, gộp Part (bỏ part 0), lấy bắt đầu sớm nhất', () => {
+  it('cộng durationMin, đếm buổi, gộp môn (bỏ môn 0), lấy bắt đầu sớm nhất', () => {
     const sessions = [
-      { durationMin: 25, part: 3, startedAt: 100 },
-      { durationMin: 30, part: 0, startedAt: 50 },
-      { durationMin: 5, part: 3, startedAt: 200 },
+      { durationMin: 25, subjectId: 3, startedAt: 100 },
+      { durationMin: 30, subjectId: 0, startedAt: 50 },
+      { durationMin: 5, subjectId: 3, startedAt: 200 },
     ]
     expect(summarizeDay(sessions)).toEqual({
       totalMinutes: 60,
       sessionCount: 3,
-      partsStudied: [3],
+      subjectsStudied: [3],
       firstStartedAt: 50,
     })
   })
 
-  it('mảng rỗng → tổng 0, không buổi, không part', () => {
-    expect(summarizeDay([])).toEqual({ totalMinutes: 0, sessionCount: 0, partsStudied: [], firstStartedAt: null })
+  it('mảng rỗng → tổng 0, không buổi, không môn', () => {
+    expect(summarizeDay([])).toEqual({ totalMinutes: 0, sessionCount: 0, subjectsStudied: [], firstStartedAt: null })
   })
 })
 

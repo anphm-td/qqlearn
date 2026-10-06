@@ -20,6 +20,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { todayISO } from '@core/date'
 
+import { useT } from '@data/useT'
+
 import { catchUpNeeded, nextOccurrence } from './reminderSchedule'
 
 const FIRED_KEY = 'qlearn.reminder.fired.'
@@ -45,18 +47,27 @@ export interface ReminderJob {
   body: string
 }
 
-export const REMINDER_JOBS: ReminderJob[] = [
+/** Định nghĩa 1 lời nhắc — title/body là KEY trong dict 'settings' (nhóm 'remind.job.*'). */
+export interface ReminderJobDef {
+  kind: 'study' | 'note'
+  time: string
+  titleKey: string
+  bodyKey: string
+}
+
+/** Lời nhắc không phụ thuộc ngôn ngữ — hook useReminders tra chuỗi qua useT('settings'). */
+export const REMINDER_JOBS: ReminderJobDef[] = [
   {
     kind: 'study',
     time: '',
-    title: 'Đã đến giờ học!',
-    body: 'Mở Sổ và bắt đầu một phiên học nhỏ nhé.',
+    titleKey: 'remind.job.study.title',
+    bodyKey: 'remind.job.study.body',
   },
   {
     kind: 'note',
     time: '',
-    title: 'Ghi lại hôm nay nhé',
-    body: 'Bạn vừa học được gì? Ghi nhanh vài dòng trước khi ngủ.',
+    titleKey: 'remind.job.note.title',
+    bodyKey: 'remind.job.note.body',
   },
 ]
 
@@ -149,6 +160,9 @@ export function useReminders(reminderTime: string, noteTime: string): {
   banner: ReminderBanner | null
   dismissBanner: () => void
 } {
+  // Banner/thông báo dịch NGAY TẠI HOOK (không đụng AppLayout — nơi render banner):
+  // useT đọc language từ settings, đổi ngôn ngữ ở Cài đặt → banner sau đó theo ngôn ngữ mới.
+  const { t } = useT('settings')
   const [banner, setBanner] = useState<ReminderBanner | null>(null)
   const timersRef = useRef<number[]>([])
 
@@ -173,10 +187,13 @@ export function useReminders(reminderTime: string, noteTime: string): {
 
   const activeJobs = useCallback(
     (): ReminderJob[] =>
-      REMINDER_JOBS.map((j) => ({ ...j, time: j.kind === 'study' ? reminderTime : noteTime })).filter(
-        (j) => j.time !== '',
-      ),
-    [reminderTime, noteTime],
+      REMINDER_JOBS.map((j) => ({
+        kind: j.kind,
+        time: j.kind === 'study' ? reminderTime : noteTime,
+        title: t(j.titleKey),
+        body: t(j.bodyKey),
+      })).filter((j) => j.time !== ''),
+    [reminderTime, noteTime, t],
   )
 
   // Lên lịch các mốc kế tiếp; tính lại khi đổi giờ / quay lại tab

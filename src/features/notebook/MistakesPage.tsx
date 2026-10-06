@@ -4,28 +4,50 @@ import { DangerButton, PrimaryButton, SecondaryButton } from '@/components/ui/bu
 import BubbleCheck from '@/components/ui/BubbleCheck'
 import EmptyState from '@/components/ui/EmptyState'
 import Icon from '@/components/ui/Icon'
-import PartChip from '@/components/ui/PartChip'
+import SubjectChip from '@/components/ui/SubjectChip'
 import { cn } from '@/components/ui/cn'
 import { repos } from '@data/index'
+import { useSubjects } from '@data/useSubjects'
+import { useT, type UseTResult } from '@data/useT'
 import { mistakeInputSchema } from '@core/schemas'
 import type { Mistake } from '@core/types'
 
-import { inputCls, labelCls, numOrZero, PartPicker, textareaCls } from './bits'
+import { inputCls, labelCls, numOrZero, SubjectPicker, textareaCls } from './bits'
 import { countUnreviewed, filterMistakes, type ReviewedFilter } from './filters'
 
 /**
- * /sotay/loi-sai — Sổ lỗi sai luyện đề (B6): thêm lỗi (testNo, part, questionNo,
- * myAnswer, correctAnswer, cause, explanation), lọc chưa reviewed + Part, và
+ * /sotay/loi-sai — Sổ lỗi sai (B6): thêm lỗi (testNo, môn, questionNo,
+ * myAnswer, correctAnswer, cause, explanation), lọc chưa reviewed + môn, và
  * "màn xem lại" đánh dấu đã ôn (repos.mistakes.setReviewed).
  * ≥768px master–detail 340px + chi tiết (mục 10); <768px danh sách → chi tiết.
+ * i18n: mọi chuỗi hiển thị qua useT('notebook') — dict ở src/core/i18n/dict/notebook.ts.
  */
 type Mode = 'list' | 'review'
 
-const CAUSES = ['từ vựng', 'ngữ pháp', 'đọc hiểu', 'chăm chú']
+/**
+ * Nguyên nhân lỗi đặt sẵn: `value` là dữ liệu LƯU DB (giữ nguyên vi — không dịch
+ * dữ liệu), `key` là key hiển thị đã dịch theo ngôn ngữ hiện tại.
+ */
+const CAUSES: ReadonlyArray<{ value: string; key: string }> = [
+  { value: 'từ vựng', key: 'cause.vocab' },
+  { value: 'ngữ pháp', key: 'cause.grammar' },
+  { value: 'đọc hiểu', key: 'cause.reading' },
+  { value: 'chăm chú', key: 'cause.focus' },
+]
+
+/** Nhãn hiển thị của 1 nguyên nhân: đặt sẵn → dịch; người dùng tự ghi → nguyên văn. */
+function causeLabel(t: UseTResult['t'], cause: string): string {
+  const hit = CAUSES.find((c) => c.value === cause)
+  return hit ? t(hit.key) : cause
+}
 
 export default function MistakesPage() {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
+  const subjectById = (id: number) => (subjects ?? []).find((s) => s.id === id)
   const [mistakes, setMistakes] = useState<Mistake[] | null>(null)
-  const [part, setPart] = useState(0)
+  const [subjectId, setSubjectId] = useState(0)
   const [reviewed, setReviewed] = useState<ReviewedFilter>('all')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [adding, setAdding] = useState(false)
@@ -47,8 +69,8 @@ export default function MistakesPage() {
   }, [reload])
 
   const filtered = useMemo(
-    () => filterMistakes(mistakes ?? [], { part, reviewed }),
-    [mistakes, part, reviewed],
+    () => filterMistakes(mistakes ?? [], { subjectId, reviewed }),
+    [mistakes, subjectId, reviewed],
   )
   const selected = useMemo(
     () => mistakes?.find((m) => m.id === selectedId) ?? null,
@@ -83,16 +105,16 @@ export default function MistakesPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="section-label">sổ tay · lỗi sai</p>
+      <p className="section-label">{t('section.mistakes')}</p>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="type-display">Lỗi sai</h1>
+        <h1 className="type-display">{t('mistakes.title')}</h1>
         {mode === 'list' && (
           <PrimaryButton
             onClick={() => setMode('review')}
             disabled={unreviewedCount === 0}
-            title={unreviewedCount === 0 ? 'Hết lỗi cần ôn rồi' : undefined}
+            title={unreviewedCount === 0 ? t('mistakes.allReviewedTitle') : undefined}
           >
-            <Icon name="book" size={18} /> Xem lại · còn <span className="num">{unreviewedCount}</span> lỗi
+            <Icon name="book" size={18} /> {t('mistakes.reviewButton', { count: unreviewedCount })}
           </PrimaryButton>
         )}
       </div>
@@ -105,14 +127,14 @@ export default function MistakesPage() {
         />
       ) : (
         <>
-          {/* B6 — lọc chưa reviewed + Part */}
-          <section className="paper-card flex flex-col gap-2.5 px-4 py-3" aria-label="Lọc lỗi sai">
-            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Trạng thái ôn lại">
+          {/* B6 — lọc chưa reviewed + môn */}
+          <section className="paper-card flex flex-col gap-2.5 px-4 py-3" aria-label={t('mistakes.filterAria')}>
+            <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label={t('mistakes.statusAria')}>
               {(
                 [
-                  ['all', 'Tất cả'],
-                  ['unreviewed', 'Chưa ôn'],
-                  ['reviewed', 'Đã ôn'],
+                  ['all', t('filter.all')],
+                  ['unreviewed', t('filter.unreviewed')],
+                  ['reviewed', t('filter.reviewed')],
                 ] as const
               ).map(([value, lbl]) => (
                 <button
@@ -126,26 +148,26 @@ export default function MistakesPage() {
                 </button>
               ))}
             </div>
-            <PartPicker value={part} onChange={setPart} zeroLabel="Tất cả" />
+            <SubjectPicker subjects={activeSubjects} value={subjectId} onChange={setSubjectId} zeroLabel={t('filter.all')} />
           </section>
 
           <div className="grid gap-4 md:grid-cols-[340px_1fr] md:gap-6">
             {/* Danh sách — mobile ẩn khi mở chi tiết */}
             <div className={cn('flex-col gap-3 md:flex', paneOpen ? 'hidden' : 'flex')}>
               <PrimaryButton onClick={() => setAdding(true)}>
-                <Icon name="plus" size={18} /> Ghi lỗi mới
+                <Icon name="plus" size={18} /> {t('mistakes.addNew')}
               </PrimaryButton>
 
               {mistakes === null && !loadError && (
-                <p className="type-body text-muted">Đang mở sổ…</p>
+                <p className="type-body text-muted">{t('common.opening')}</p>
               )}
 
               {loadError && (
                 <EmptyState
-                  message="Chưa mở được dữ liệu lỗi sai — có thể server PC chưa chạy hoặc máy chưa đọc được sổ cục bộ."
+                  message={t('mistakes.loadError')}
                   action={
                     <PrimaryButton onClick={() => void reload()}>
-                      <Icon name="study" size={16} /> Tải lại
+                      <Icon name="study" size={16} /> {t('common.reload')}
                     </PrimaryButton>
                   }
                 />
@@ -154,17 +176,15 @@ export default function MistakesPage() {
               {mistakes !== null && !loadError && filtered.length === 0 && (
                 mistakes.length === 0 ? (
                   <EmptyState
-                    message="Sổ lỗi sai còn trống. Sau mỗi đề, ghi lại câu sai kèm nguyên nhân để mai ôn lại."
+                    message={t('mistakes.empty')}
                     action={
                       <PrimaryButton onClick={() => setAdding(true)}>
-                        <Icon name="plus" size={18} /> Ghi lỗi đầu tiên
+                        <Icon name="plus" size={18} /> {t('mistakes.addFirst')}
                       </PrimaryButton>
                     }
                   />
                 ) : (
-                  <p className="type-body text-muted">
-                    Không có lỗi nào khớp bộ lọc. Thử bỏ chip Part hoặc đổi trạng thái ôn lại.
-                  </p>
+                  <p className="type-body text-muted">{t('mistakes.noMatch')}</p>
                 )
               )}
 
@@ -184,18 +204,23 @@ export default function MistakesPage() {
                   >
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="num">
-                        Đề {m.testNo} · Câu {m.questionNo}
+                        {t('mistakes.testQuestion', { testNo: m.testNo, questionNo: m.questionNo })}
                       </span>
                       <span className={cn('type-caption', m.reviewed ? 'text-muted' : 'text-coral')}>
-                        {m.reviewed ? 'đã ôn' : 'chưa ôn'}
+                        {m.reviewed ? t('mistakes.badge.reviewed') : t('mistakes.badge.unreviewed')}
                       </span>
                     </div>
                     <p className="type-body">
                       {m.myAnswer || '—'} → {m.correctAnswer || '—'}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                      {m.part > 0 && <PartChip part={m.part} />}
-                      {m.cause && <span className="type-caption text-muted">{m.cause}</span>}
+                      {m.subjectId > 0 && (
+                        <SubjectChip
+                          name={subjectById(m.subjectId)?.name ?? t('common.deletedSubject')}
+                          colorHex={subjectById(m.subjectId)?.colorHex}
+                        />
+                      )}
+                      {m.cause && <span className="type-caption text-muted">{causeLabel(t, m.cause)}</span>}
                     </div>
                   </button>
                 ))
@@ -215,7 +240,7 @@ export default function MistakesPage() {
                   onBack={() => setSelectedId(null)}
                 />
               ) : (
-                <EmptyState message="Chọn một lỗi ở danh sách bên trái để xem đáp án và nguyên nhân." />
+                <EmptyState message={t('mistakes.pickPrompt')} />
               )}
             </div>
           </div>
@@ -235,8 +260,11 @@ interface MistakeFormProps {
 }
 
 function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
   const [testNo, setTestNo] = useState(initial ? String(initial.testNo) : '')
-  const [part, setPart] = useState(initial?.part ?? 0)
+  const [subjectId, setSubjectId] = useState(initial?.subjectId ?? 0)
   const [questionNo, setQuestionNo] = useState(initial ? String(initial.questionNo) : '')
   const [myAnswer, setMyAnswer] = useState(initial?.myAnswer ?? '')
   const [correctAnswer, setCorrectAnswer] = useState(initial?.correctAnswer ?? '')
@@ -249,7 +277,7 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
     setError('')
     const parsed = mistakeInputSchema.safeParse({
       testNo: numOrZero(testNo),
-      part,
+      subjectId,
       questionNo: numOrZero(questionNo),
       myAnswer: myAnswer.trim(),
       correctAnswer: correctAnswer.trim(),
@@ -258,7 +286,7 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
       reviewed: initial?.reviewed ?? false,
     })
     if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? 'Dữ liệu chưa hợp lệ.')
+      setError(parsed.error.issues[0]?.message ?? t('common.invalidData'))
       return
     }
     setSaving(true)
@@ -278,16 +306,16 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
   const editing = initial?.id != null
 
   return (
-    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label={editing ? 'Sửa lỗi sai' : 'Ghi lỗi sai'}>
+    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label={editing ? t('mistakes.formEditAria') : t('mistakes.formAddAria')}>
       <div className="md:hidden">
         <SecondaryButton onClick={onCancel}>
-          <Icon name="arrow-left" size={18} /> Danh sách
+          <Icon name="arrow-left" size={18} /> {t('common.toList')}
         </SecondaryButton>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className={labelCls} htmlFor="mk-test">Số đề</label>
+          <label className={labelCls} htmlFor="mk-test">{t('mistakes.field.testNo')}</label>
           <input
             id="mk-test"
             className={inputCls}
@@ -296,11 +324,11 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
             min={0}
             value={testNo}
             onChange={(e) => setTestNo(e.target.value)}
-            placeholder="0 — không rõ"
+            placeholder={t('mistakes.placeholder.testNo')}
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className={labelCls} htmlFor="mk-q">Câu số</label>
+          <label className={labelCls} htmlFor="mk-q">{t('mistakes.field.questionNo')}</label>
           <input
             id="mk-q"
             className={inputCls}
@@ -309,19 +337,19 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
             min={0}
             value={questionNo}
             onChange={(e) => setQuestionNo(e.target.value)}
-            placeholder="vd. 87"
+            placeholder={t('mistakes.placeholder.questionNo')}
           />
         </div>
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className={labelCls}>Part</span>
-        <PartPicker value={part} onChange={setPart} zeroLabel="không rõ" />
+        <span className={labelCls}>{t('form.subject')}</span>
+        <SubjectPicker subjects={activeSubjects} value={subjectId} onChange={setSubjectId} zeroLabel={t('form.unassigned')} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div className="flex flex-col gap-1">
-          <label className={labelCls} htmlFor="mk-my">Bạn chọn</label>
+          <label className={labelCls} htmlFor="mk-my">{t('mistakes.field.myAnswer')}</label>
           <input
             id="mk-my"
             className={inputCls}
@@ -331,7 +359,7 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
           />
         </div>
         <div className="flex flex-col gap-1">
-          <label className={labelCls} htmlFor="mk-correct">Đáp án đúng</label>
+          <label className={labelCls} htmlFor="mk-correct">{t('mistakes.field.correctAnswer')}</label>
           <input
             id="mk-correct"
             className={inputCls}
@@ -343,17 +371,17 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <span className={labelCls}>Nguyên nhân</span>
+        <span className={labelCls}>{t('mistakes.field.cause')}</span>
         <div className="flex flex-wrap gap-1.5">
           {CAUSES.map((c) => (
             <button
-              key={c}
+              key={c.value}
               type="button"
-              className={cn('part-chip', cause === c && 'part-chip--active')}
-              aria-pressed={cause === c}
-              onClick={() => setCause(cause === c ? '' : c)}
+              className={cn('part-chip', cause === c.value && 'part-chip--active')}
+              aria-pressed={cause === c.value}
+              onClick={() => setCause(cause === c.value ? '' : c.value)}
             >
-              {c}
+              {t(c.key)}
             </button>
           ))}
         </div>
@@ -361,19 +389,19 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
           className={inputCls}
           value={cause}
           onChange={(e) => setCause(e.target.value)}
-          placeholder="hoặc ghi nguyên nhân khác"
-          aria-label="Nguyên nhân khác"
+          placeholder={t('mistakes.placeholder.causeOther')}
+          aria-label={t('mistakes.causeOtherAria')}
         />
       </div>
 
       <div className="flex flex-col gap-1">
-        <label className={labelCls} htmlFor="mk-expl">Giải thích ngắn</label>
+        <label className={labelCls} htmlFor="mk-expl">{t('mistakes.field.explanation')}</label>
         <textarea
           id="mk-expl"
           className={textareaCls}
           value={explanation}
           onChange={(e) => setExplanation(e.target.value)}
-          placeholder="Sai vì nhầm “although” với “despite”…"
+          placeholder={t('mistakes.placeholder.explanation')}
         />
       </div>
 
@@ -381,9 +409,9 @@ function MistakeForm({ initial, onSaved, onCancel }: MistakeFormProps) {
 
       <div className="flex gap-2">
         <PrimaryButton onClick={() => void submit()} disabled={saving}>
-          {saving ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Lưu vào sổ'}
+          {saving ? t('common.saving') : editing ? t('common.saveChanges') : t('common.saveToNotebook')}
         </PrimaryButton>
-        <SecondaryButton onClick={onCancel}>Bỏ qua</SecondaryButton>
+        <SecondaryButton onClick={onCancel}>{t('common.cancel')}</SecondaryButton>
       </div>
     </section>
   )
@@ -401,6 +429,9 @@ interface MistakeDetailProps {
 }
 
 function MistakeDetail({ mistake, onToggleReviewed, onDeleted, onUpdated, onBack }: MistakeDetailProps) {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const subject = (subjects ?? []).find((s) => s.id === mistake.subjectId)
   const [confirming, setConfirming] = useState(false)
   const [editing, setEditing] = useState(false)
 
@@ -433,49 +464,53 @@ function MistakeDetail({ mistake, onToggleReviewed, onDeleted, onUpdated, onBack
   }
 
   return (
-    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label="Chi tiết lỗi sai">
+    <section className="paper-card flex flex-col gap-3 px-4 py-4" aria-label={t('mistakes.detailAria')}>
       <div className="md:hidden">
         <SecondaryButton onClick={onBack}>
-          <Icon name="arrow-left" size={18} /> Danh sách
+          <Icon name="arrow-left" size={18} /> {t('common.toList')}
         </SecondaryButton>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="num">
-          Đề {mistake.testNo} · Câu {mistake.questionNo}
+          {t('mistakes.testQuestion', { testNo: mistake.testNo, questionNo: mistake.questionNo })}
         </p>
-        {mistake.part > 0 && <PartChip part={mistake.part} />}
+        {mistake.subjectId > 0 && (
+          <SubjectChip name={subject?.name ?? t('common.deletedSubject')} colorHex={subject?.colorHex} />
+        )}
       </div>
 
       <div className="flex flex-wrap gap-x-6 gap-y-1">
         <p className="type-body text-coral">
-          Bạn chọn: <span className="num">{mistake.myAnswer || '—'}</span>
+          {t('mistakes.myAnswerLine', { answer: mistake.myAnswer || '—' })}
         </p>
         <p className="type-body text-teal">
-          Đáp án đúng: <span className="num">{mistake.correctAnswer || '—'}</span>
+          {t('mistakes.correctAnswerLine', { answer: mistake.correctAnswer || '—' })}
         </p>
       </div>
 
-      {mistake.cause && <p className="type-body">Nguyên nhân: {mistake.cause}</p>}
+      {mistake.cause && <p className="type-body">{t('mistakes.causeLine', { cause: causeLabel(t, mistake.cause) })}</p>}
       {mistake.explanation && <p className="type-body text-muted">{mistake.explanation}</p>}
 
       <div className="flex items-center gap-3">
         <BubbleCheck
           checked={mistake.reviewed}
           onChange={onToggleReviewed}
-          label="Đã ôn lại lỗi này"
+          label={t('mistakes.reviewedCheckbox')}
         />
-        <span className="type-body">{mistake.reviewed ? 'Đã ôn lại' : 'Chưa ôn lại'}</span>
+        <span className="type-body">
+          {mistake.reviewed ? t('mistakes.state.reviewed') : t('mistakes.state.unreviewed')}
+        </span>
       </div>
 
       <div className="flex gap-2">
         {mistake.id != null && (
           <SecondaryButton onClick={() => setEditing(true)}>
-            <Icon name="pen" size={16} /> Sửa lỗi
+            <Icon name="pen" size={16} /> {t('mistakes.edit')}
           </SecondaryButton>
         )}
         <DangerButton onClick={() => void remove()}>
-          {confirming ? 'Chắc chắn xoá?' : 'Xoá lỗi'}
+          {confirming ? t('common.confirmDelete') : t('mistakes.delete')}
         </DangerButton>
       </div>
     </section>
@@ -491,6 +526,9 @@ interface ReviewSessionProps {
 }
 
 function ReviewSession({ queue, onReviewed, onExit }: ReviewSessionProps) {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const subjectById = (id: number) => (subjects ?? []).find((s) => s.id === id)
   // Chốt danh sách lúc vào màn — khi đánh dấu "đã ôn", lỗi rời queue của parent
   // nhưng trình tự xem lại không bị dịch (không bỏ sót lỗi).
   const [items] = useState<Mistake[]>(queue)
@@ -501,19 +539,19 @@ function ReviewSession({ queue, onReviewed, onExit }: ReviewSessionProps) {
   const advance = () => setIdx((i) => i + 1)
 
   return (
-    <section className="flex flex-col gap-4" aria-label="Xem lại lỗi sai">
+    <section className="flex flex-col gap-4" aria-label={t('mistakes.reviewSessionAria')}>
       {!done && (
         <p className="type-caption text-muted">
-          lỗi <span className="num">{idx + 1}</span>/<span className="num">{items.length}</span>
+          {t('mistakes.reviewCounter', { current: idx + 1, total: items.length })}
         </p>
       )}
 
       {done ? (
         <div className="paper-card flex flex-col items-center gap-2 px-4 py-6 text-center">
-          <p className="type-h2">Hết lỗi cần ôn rồi!</p>
-          <p className="type-body text-muted">Giữ nhịp này nhé — mai quay lại ôn tiếp.</p>
+          <p className="type-h2">{t('mistakes.done.title')}</p>
+          <p className="type-body text-muted">{t('mistakes.done.body')}</p>
           <PrimaryButton onClick={onExit} className="mt-2">
-            Về danh sách
+            {t('mistakes.backToList')}
           </PrimaryButton>
         </div>
       ) : (
@@ -521,21 +559,26 @@ function ReviewSession({ queue, onReviewed, onExit }: ReviewSessionProps) {
           <div className="paper-card flex flex-col gap-3 px-4 py-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="num">
-                Đề {current.testNo} · Câu {current.questionNo}
+                {t('mistakes.testQuestion', { testNo: current.testNo, questionNo: current.questionNo })}
               </p>
-              {current.part > 0 && <PartChip part={current.part} />}
+              {current.subjectId > 0 && (
+                <SubjectChip
+                  name={subjectById(current.subjectId)?.name ?? t('common.deletedSubject')}
+                  colorHex={subjectById(current.subjectId)?.colorHex}
+                />
+              )}
             </div>
 
             <div className="flex flex-wrap gap-x-6 gap-y-1">
               <p className="type-body text-coral">
-                Bạn chọn: <span className="num">{current.myAnswer || '—'}</span>
+                {t('mistakes.myAnswerLine', { answer: current.myAnswer || '—' })}
               </p>
               <p className="type-body text-teal">
-                Đáp án đúng: <span className="num">{current.correctAnswer || '—'}</span>
+                {t('mistakes.correctAnswerLine', { answer: current.correctAnswer || '—' })}
               </p>
             </div>
 
-            {current.cause && <p className="type-body">Nguyên nhân: {current.cause}</p>}
+            {current.cause && <p className="type-body">{t('mistakes.causeLine', { cause: causeLabel(t, current.cause) })}</p>}
             {current.explanation && <p className="type-body text-muted">{current.explanation}</p>}
 
             <div className="flex flex-wrap gap-2">
@@ -545,10 +588,10 @@ function ReviewSession({ queue, onReviewed, onExit }: ReviewSessionProps) {
                   advance()
                 }}
               >
-                Đã ôn lại — lỗi kế
+                {t('mistakes.markReviewedNext')}
               </PrimaryButton>
-              <SecondaryButton onClick={advance}>Bỏ qua</SecondaryButton>
-              <SecondaryButton onClick={onExit}>Thoát</SecondaryButton>
+              <SecondaryButton onClick={advance}>{t('common.skip')}</SecondaryButton>
+              <SecondaryButton onClick={onExit}>{t('common.exit')}</SecondaryButton>
             </div>
           </div>
         )

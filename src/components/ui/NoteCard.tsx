@@ -2,34 +2,14 @@ import type { ReactNode } from 'react'
 
 import { cn } from '@/components/ui/cn'
 
-/**
- * Màu dải washi = màu môn (design-system.md mục 5, dòng "Màu môn") — KHÔNG thêm màu ngoài bảng.
- * 'neutral' = --rule cho note chưa gắn môn.
- */
-export type WashiColor =
-  | 'neutral'
-  | 'toeic'
-  | 'toan'
-  | 'tieng-nhat'
-  | 'lap-trinh'
-  | 'mon-them-1'
-  | 'mon-them-2'
-
-const WASHI_VAR: Record<WashiColor, string> = {
-  neutral: 'var(--rule)',
-  toeic: 'var(--subject-toeic)',
-  toan: 'var(--subject-toan)',
-  'tieng-nhat': 'var(--subject-tieng-nhat)',
-  'lap-trinh': 'var(--subject-lap-trinh)',
-  'mon-them-1': 'var(--subject-mon-them-1)',
-  'mon-them-2': 'var(--subject-mon-them-2)',
-}
-
 interface NoteCardProps {
-  /** Tên môn hiển thị ở chân note (vd. "TOEIC"); bỏ nếu note tự do. */
+  /** Tên môn hiển thị ở chân note (vd. "Toán"); bỏ nếu note tự do. */
   subject?: string
-  /** Màu dải washi trên mép card — mặc định neutral. */
-  washi?: WashiColor
+  /**
+   * Màu dải washi trên mép card — MÃ MÀU của môn (colorHex từ SUBJECT_PALETTE,
+   * design-system.md mục 5) hoặc bỏ trống = washi neutral (--rule).
+   */
+  washiHex?: string
   title?: string
   /** 2–3 dòng nội dung note. */
   children?: ReactNode
@@ -50,7 +30,7 @@ interface NoteCardProps {
  */
 export default function NoteCard({
   subject,
-  washi = 'neutral',
+  washiHex,
   title,
   children,
   tag,
@@ -69,7 +49,7 @@ export default function NoteCard({
         ? { role: 'button' as const, tabIndex: 0 }
         : {})}
     >
-      <span className="washi" style={{ background: WASHI_VAR[washi] }} aria-hidden="true" />
+      <span className="washi" style={{ background: washiHex ?? 'var(--rule)' }} aria-hidden="true" />
 
       {title && <h3 className="type-h2 mb-1">{title}</h3>}
       {children && <div className="type-body">{children}</div>}

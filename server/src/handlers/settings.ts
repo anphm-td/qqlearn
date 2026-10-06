@@ -17,8 +17,8 @@ export function getSettings(db: DatabaseSync): SettingsData {
   if (row) return toSettings(row)
   db.prepare(
     `INSERT INTO settings (id, dailyGoalMinutes, targetScore, examDate, reminderTime, ragBaseUrl,
-       onboardingDone, checkinEnabled, pomodoro, syncMode, serverUrl, updatedAt)
-     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       onboardingDone, checkinEnabled, pomodoro, syncMode, serverUrl, language, updatedAt)
+     VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     90,
     700,
@@ -30,6 +30,7 @@ export function getSettings(db: DatabaseSync): SettingsData {
     JSON.stringify({ focusMin: 25, breakMin: 5 }),
     'local',
     '',
+    'vi',
     Date.now(),
   )
   return toSettings(readSettingsRow(db) as SettingsRow)
@@ -41,7 +42,7 @@ export function updateSettings(db: DatabaseSync, body: unknown): SettingsData {
   db.prepare(
     `UPDATE settings SET dailyGoalMinutes = ?, targetScore = ?, examDate = ?, reminderTime = ?,
        ragBaseUrl = ?, onboardingDone = ?, checkinEnabled = ?, pomodoro = ?, syncMode = ?,
-       serverUrl = ?, updatedAt = ?
+       serverUrl = ?, language = ?, updatedAt = ?
      WHERE id = 1`,
   ).run(
     next.dailyGoalMinutes,
@@ -54,6 +55,7 @@ export function updateSettings(db: DatabaseSync, body: unknown): SettingsData {
     JSON.stringify(next.pomodoro),
     next.syncMode,
     next.serverUrl,
+    next.language,
     Date.now(),
   )
   return getSettings(db)

@@ -3,12 +3,13 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 
 import HanddrawnCheck from '@/components/ui/HanddrawnCheck'
 import Icon from '@/components/ui/Icon'
-import PartChip from '@/components/ui/PartChip'
+import SubjectChip from '@/components/ui/SubjectChip'
 import ProgressBubble from '@/components/ui/ProgressBubble'
 import { DangerButton, PrimaryButton, SecondaryButton } from '@/components/ui/buttons'
 import { cn } from '@/components/ui/cn'
 import DurationPicker, { OptionPill } from '@/features/today/DurationPicker'
 import type { SessionSetup } from '@/features/study/StudyPage'
+import { activityLabelKey } from '@/features/study/StudyPage'
 import {
   advanceTimer,
   elapsedMs,
@@ -22,7 +23,10 @@ import {
 import { clampInt, formatHHMM, localEpoch, percentOfDay, summarizeDay } from '@/features/today/todayLogic'
 import { clearSessionState, loadSessionState, saveSessionState } from '@/features/study/sessionRecovery'
 import { repos, todayISO } from '@data'
+import { onDataChanged } from '@data/dataEvents'
+import { useT } from '@data/useT'
 import { useSettings } from '@data/useSettings'
+import { useSubjects } from '@data/useSubjects'
 import { sessionInputSchema } from '@core/schemas'
 import type { NewSession, Session } from '@core/types'
 
@@ -32,8 +36,10 @@ import type { NewSession, Session } from '@core/types'
  *     stepper ±5 + ô nhập số tự do; preset chỉ là gợi ý;
  *   - đếm bằng TIMESTAMP: interval 500ms chỉ vẽ lại màn hình, số phút tính từ
  *     epoch (elapsed = now − startedAt + accumulated) nên không drift;
- *   - chọn Part 1–7 bằng PartChip; kết thúc buổi lưu session (date = todayISO() local);
+ *   - chọn MÔN (đa môn) bằng SubjectChip; kết thúc buổi lưu session (date = todayISO() local);
  *   - bên dưới có form nhập tay buổi học (source: 'manual').
+ * i18n: mọi chuỗi hiển thị qua useT('study') — dict ở src/core/i18n/dict/study.ts;
+ * activity lưu DB giữ nguyên giá trị, hiển thị qua key dict (activityLabelKey).
  */
 
 const ACTIVITIES = ['nghe', 'đọc', 'ngữ pháp', 'từ vựng', 'luyện đề'] as const
@@ -46,14 +52,23 @@ const inputCls =
 export default function SessionPage() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { t } = useT('study')
   const { settings } = useSettings()
+  const { subjects } = useSubjects()
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
   const setup = (location.state ?? null) as Partial<SessionSetup & { openManual?: boolean }> | null
+
+  // Nhãn hiển thị của 1 activity — không có key (dữ liệu lạ) thì giữ nguyên giá trị.
+  const activityDisplay = (a: string): string => {
+    const key = activityLabelKey(a)
+    return key ? t(key) : a
+  }
 
   // ===== Bấm giờ (timestamp) =====
   const [phase, setPhase] = useState<Phase>('setup')
   const [timer, setTimer] = useState<TimerState>(emptyTimer)
   const [pickedTarget, setPickedTarget] = useState<number | null>(null) // null = chưa chỉnh → dùng mặc định
-  const [part, setPart] = useState(() => clampInt(setup?.part ?? 0, 0, 7, 0))
+  const [subjectId, setSubjectId] = useState(() => clampInt(setup?.subjectId ?? 0, 0, Number.MAX_SAFE_INTEGER, 0))
   const [activity, setActivity] = useState(() => setup?.activity ?? 'nghe')
   const [breakEndsAt, setBreakEndsAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => Date.now())
@@ -76,7 +91,7 @@ export default function SessionPage() {
     setPhase(saved.phase)
     setTimer(saved.timer)
     setPickedTarget(saved.targetMin)
-    setPart(saved.part)
+    setSubjectId(saved.subjectId)
     setActivity(saved.activity)
     setBreakEndsAt(saved.breakEndsAt)
     sessionStartRef.current = saved.sessionStartAt
@@ -94,12 +109,12 @@ export default function SessionPage() {
       phase,
       timer,
       targetMin,
-      part,
+      subjectId,
       activity,
       breakEndsAt,
       sessionStartAt: sessionStartRef.current ?? Date.now(),
     })
-  }, [phase, timer, targetMin, part, activity, breakEndsAt])
+  }, [phase, timer, targetMin, subjectId, activity, breakEndsAt])
 
   // Rời hẳn trang (F5/đóng tab) khi phiên chưa lưu → hỏi trước, không mất buổi.
   useEffect(() => {
@@ -186,7 +201,7 @@ export default function SessionPage() {
     const start = sessionStartRef.current
     if (start === null) return
     if (durationMin < 1) {
-      setError('Buổi chưa đủ một phút — học thêm hoặc hủy nhé.')
+      setError(t('error.tooShort'))
       return
     }
     const input: NewSession = {
@@ -194,14 +209,14 @@ export default function SessionPage() {
       startedAt: start,
       endedAt: Date.now(),
       durationMin,
-      part,
+      subjectId,
       activity,
       source: 'timer',
       note: '',
     }
     const parsed = sessionInputSchema.safeParse(input)
     if (!parsed.success) {
-      setError('Dữ liệu buổi học chưa hợp lệ — kiểm tra lại Part và thời lượng.')
+      setError(t('error.invalid'))
       return
     }
     setSaving(true)
@@ -212,7 +227,7 @@ export default function SessionPage() {
       navigate('/', { replace: true }) // đóng vòng lặp: về Home thấy tiến độ cập nhật
     } catch {
       setSaving(false)
-      setError('Không lưu được buổi học — thử lại nhé.')
+      setError(t('error.save'))
     }
   }
 
@@ -220,7 +235,7 @@ export default function SessionPage() {
   const [mDate, setMDate] = useState(() => todayISO())
   const [mTime, setMTime] = useState(() => formatHHMM(Date.now()))
   const [mDuration, setMDuration] = useState(25)
-  const [mPart, setMPart] = useState(0)
+  const [mSubjectId, setMSubjectId] = useState(0)
   const [mActivity, setMActivity] = useState('nghe')
   const [mNote, setMNote] = useState('')
   const [mSaving, setMSaving] = useState(false)
@@ -234,7 +249,7 @@ export default function SessionPage() {
       startedAt,
       endedAt: startedAt + mDuration * 60_000,
       durationMin: mDuration,
-      part: mPart,
+      subjectId: mSubjectId,
       activity: mActivity,
       source: 'manual',
       note: mNote.trim(),
@@ -242,7 +257,7 @@ export default function SessionPage() {
     const parsed = sessionInputSchema.safeParse(input)
     if (!parsed.success) {
       setMSaved(false)
-      setMError('Chưa hợp lệ — kiểm tra ngày, giờ và thời lượng.')
+      setMError(t('manual.invalid'))
       return
     }
     setMSaving(true)
@@ -252,7 +267,7 @@ export default function SessionPage() {
       setMSaved(true)
     } catch {
       setMSaved(false)
-      setMError('Không lưu được — thử lại nhé.')
+      setMError(t('manual.saveError'))
     } finally {
       setMSaving(false)
     }
@@ -260,55 +275,83 @@ export default function SessionPage() {
 
   // ===== Dữ liệu "hôm nay" cho dòng mục tiêu =====
   const [todaySessions, setTodaySessions] = useState<Session[] | null>(null)
-  useEffect(() => {
+  const loadTodaySessions = useCallback(() => {
     repos.sessions
       .listByDate(todayISO())
       .then(setTodaySessions)
       .catch(() => setTodaySessions([]))
   }, [])
+  useEffect(() => {
+    loadTodaySessions()
+  }, [loadTodaySessions])
+
+  // Card Check-in nổi trên cả trang này: khi nó lưu buổi học (phát tín hiệu
+  // data-changed) thì dòng "hôm nay: X/Y phút" nạp lại ngay, không phải đổi trang.
+  useEffect(
+    () =>
+      onDataChanged((detail) => {
+        if (detail.table === 'sessions') loadTodaySessions()
+      }),
+    [loadTodaySessions],
+  )
   const todaySummary = summarizeDay(todaySessions ?? [])
   const goal = settings?.dailyGoalMinutes ?? 90
 
-  const phaseLabel = phase === 'running' ? 'đang tập trung' : phase === 'paused' ? 'tạm nghỉ' : 'đã xong vòng học'
+  const phaseLabel =
+    phase === 'running' ? t('phase.running') : phase === 'paused' ? t('phase.paused') : t('phase.done')
 
   return (
     <div className="mx-auto w-full max-w-[600px]">
       <header className="flex items-center gap-3">
-        <Link to="/hoc" aria-label="Về tab Học" className="bubble flex h-9 w-9 items-center justify-center text-muted">
+        <Link to="/hoc" aria-label={t('header.backAria')} className="bubble flex h-9 w-9 items-center justify-center text-muted">
           <Icon name="arrow-left" size={18} />
         </Link>
         <div>
-          <p className="section-label">buổi học</p>
-          <h1 className="type-h2">Bấm giờ học</h1>
+          <p className="section-label">{t('header.label')}</p>
+          <h1 className="type-h2">{t('header.title')}</h1>
         </div>
       </header>
 
       {phase === 'setup' ? (
-        <section className="paper-card mt-4 px-4 py-5" aria-label="Chuẩn bị buổi học">
+        <section className="paper-card mt-4 px-4 py-5" aria-label={t('setup.aria')}>
           <DurationPicker
             value={targetMin}
             onChange={setPickedTarget}
             min={5}
             max={480}
-            label="thời lượng tự chỉnh"
+            label={t('duration.label')}
             className="border-b border-dashed border-rule pb-5"
           />
 
           <div className="mt-6">
-            <p className="section-label label-dot-lavender">chọn part</p>
+            <p className="section-label label-dot-lavender">{t('subject.label')}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <PartChip key={n} part={n} active={part === n} onClick={() => setPart((cur) => (cur === n ? 0 : n))} />
+              {activeSubjects.map((s) => (
+                <SubjectChip
+                  key={s.id}
+                  name={s.name}
+                  colorHex={s.colorHex}
+                  active={subjectId === s.id}
+                  onClick={() => setSubjectId((cur) => (cur === s.id ? 0 : s.id!))}
+                />
               ))}
+              <Link to="/mon-hoc" className="part-chip">
+                {t('subject.addNew')}
+              </Link>
             </div>
           </div>
 
           <div className="mt-6">
-            <p className="section-label label-dot-lavender">hoạt động</p>
+            <p className="section-label label-dot-lavender">{t('activity.label')}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {ACTIVITIES.map((a) => (
-                <OptionPill key={a} selected={activity === a} onClick={() => setActivity(a)} ariaLabel={`Hoạt động ${a}`}>
-                  {a}
+                <OptionPill
+                  key={a}
+                  selected={activity === a}
+                  onClick={() => setActivity(a)}
+                  ariaLabel={t('activity.aria', { name: activityDisplay(a) })}
+                >
+                  {activityDisplay(a)}
                 </OptionPill>
               ))}
             </div>
@@ -316,35 +359,53 @@ export default function SessionPage() {
 
           <div className="mt-6 flex flex-col items-center gap-4">
             <p className="num type-caption inline-flex items-center gap-2 rounded-full border border-rule bg-card px-4 py-1.5 text-muted">
-              hôm nay: {todaySummary.totalMinutes}/{goal} phút ({percentOfDay(todaySummary.totalMinutes, goal)}%)
+              {t('goal.todayShort', {
+                done: todaySummary.totalMinutes,
+                total: goal,
+                pct: percentOfDay(todaySummary.totalMinutes, goal),
+              })}
             </p>
             <PrimaryButton className="w-full" onClick={handleStart}>
-              <Icon name="study" size={18} /> Bắt đầu học ngay
+              <Icon name="study" size={18} /> {t('action.startNow')}
             </PrimaryButton>
-            <p className="type-caption text-center text-muted">
-              Nghỉ {breakMin} phút sau mỗi vòng — hẹn giờ nghỉ tự hiện khi đủ thời lượng.
-            </p>
+            <p className="type-caption text-center text-muted">{t('hint.breakNote', { break: breakMin })}</p>
           </div>
         </section>
       ) : (
-        <section className="paper-card mt-4 flex flex-col items-center gap-4 px-4 py-6" aria-label="Đang học">
+        <section className="paper-card mt-4 flex flex-col items-center gap-4 px-4 py-6" aria-label={t('running.aria')}>
           <p className="section-label">{phaseLabel}</p>
 
           <ProgressBubble
             percent={percentOfDay(focusElapsed / 60_000, targetMin)}
-            caption={phase === 'done' ? `đã học ${durationMin} phút` : `còn ${formatClock(remaining)}`}
+            caption={
+              phase === 'done'
+                ? t('progress.done', { minutes: durationMin })
+                : t('progress.remaining', { time: formatClock(remaining) })
+            }
           />
-          <p className="num text-[40px] leading-[48px] text-ink" aria-label="Đồng hồ đếm ngược">
+          <p className="num text-[40px] leading-[48px] text-ink" aria-label={t('clock.aria')}>
             {phase === 'done' ? formatClock(0) : formatClock(remaining)}
           </p>
 
           <div className="w-full">
             <p className="type-caption mb-1 text-muted">
-              hoạt động: {activity} — part {part > 0 ? part : 'chưa chọn'} (đổi được tới khi lưu)
+              {t('live.activityLine', {
+                activity: activityDisplay(activity),
+                subject: (() => {
+                  const s = activeSubjects.find((x) => x.id === subjectId)
+                  return s ? t('live.subjectNamed', { name: s.name }) : t('live.noSubject')
+                })(),
+              })}
             </p>
             <div className="flex flex-wrap gap-1.5">
-              {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-                <PartChip key={n} part={n} active={part === n} onClick={() => setPart((cur) => (cur === n ? 0 : n))} />
+              {activeSubjects.map((s) => (
+                <SubjectChip
+                  key={s.id}
+                  name={s.name}
+                  colorHex={s.colorHex}
+                  active={subjectId === s.id}
+                  onClick={() => setSubjectId((cur) => (cur === s.id ? 0 : s.id!))}
+                />
               ))}
             </div>
           </div>
@@ -355,15 +416,17 @@ export default function SessionPage() {
             >
               <div className="flex items-center justify-between gap-2">
                 <p className="num type-body">
-                  {breakDone ? 'Hết giờ nghỉ!' : `Nghỉ ${breakMin} phút — còn ${formatClock(breakRemaining ?? 0)}`}
+                  {breakDone
+                    ? t('break.done')
+                    : t('break.remaining', { break: breakMin, time: formatClock(breakRemaining ?? 0) })}
                 </p>
                 {breakDone ? (
                   <PrimaryButton className="px-3 py-1.5 text-[13px]" onClick={handleNextCycle}>
-                    Học tiếp vòng nữa
+                    {t('break.next')}
                   </PrimaryButton>
                 ) : (
                   <SecondaryButton className="px-3 py-1.5 text-[13px]" onClick={() => setBreakEndsAt(null)}>
-                    Bỏ qua nghỉ
+                    {t('break.skip')}
                   </SecondaryButton>
                 )}
               </div>
@@ -373,29 +436,29 @@ export default function SessionPage() {
           <div className="flex w-full flex-wrap justify-center gap-2">
             {phase === 'running' && (
               <SecondaryButton onClick={handlePause}>
-                <Icon name="bell" size={16} /> Tạm nghỉ
+                <Icon name="bell" size={16} /> {t('action.pause')}
               </SecondaryButton>
             )}
             {phase === 'paused' && (
               <PrimaryButton onClick={handleResume}>
-                <Icon name="study" size={16} /> Tiếp tục
+                <Icon name="study" size={16} /> {t('action.resume')}
               </PrimaryButton>
             )}
             {phase === 'done' && breakEndsAt === null && (
               <>
-                <SecondaryButton onClick={handleExtend}>Học thêm 5 phút</SecondaryButton>
-                <SecondaryButton onClick={handleBreak}>Nghỉ {breakMin} phút</SecondaryButton>
+                <SecondaryButton onClick={handleExtend}>{t('action.extend')}</SecondaryButton>
+                <SecondaryButton onClick={handleBreak}>{t('action.takeBreak', { break: breakMin })}</SecondaryButton>
               </>
             )}
           </div>
 
           <div className="flex w-full flex-wrap justify-center gap-2 border-t border-dashed border-rule pt-4">
             <PrimaryButton onClick={() => void handleSave()} disabled={saving || durationMin < 1}>
-              <Icon name="book" size={16} /> {saving ? 'Đang lưu…' : 'Kết thúc & lưu'}
+              <Icon name="book" size={16} /> {saving ? t('save.saving') : t('save.button')}
             </PrimaryButton>
-            <DangerButton onClick={handleCancel}>{confirmCancel ? 'Chắc chắn huỷ?' : 'Huỷ buổi'}</DangerButton>
+            <DangerButton onClick={handleCancel}>{confirmCancel ? t('cancel.confirm') : t('cancel.button')}</DangerButton>
           </div>
-          {durationMin < 1 && <p className="type-caption text-muted">Buổi chưa đủ một phút để lưu — học thêm hoặc hủy nhé.</p>}
+          {durationMin < 1 && <p className="type-caption text-muted">{t('error.tooShortInline')}</p>}
           {error && (
             <p className="type-caption text-coral" role="alert">
               {error}
@@ -405,14 +468,14 @@ export default function SessionPage() {
       )}
 
       {/* ===== Form nhập tay buổi học ===== */}
-      <section className="paper-card mt-4 px-4 pt-4 pb-5" aria-label="Nhập tay buổi học">
-        <p className="section-label">nhập tay buổi học</p>
-        <p className="type-caption mt-1 text-muted">Học ngoài app? Ghi lại sau cho đủ sổ.</p>
+      <section className="paper-card mt-4 px-4 pt-4 pb-5" aria-label={t('manual.aria')}>
+        <p className="section-label">{t('manual.label')}</p>
+        <p className="type-caption mt-1 text-muted">{t('manual.hint')}</p>
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>
             <label htmlFor="manual-date" className="type-caption mb-1 block text-muted">
-              ngày học
+              {t('manual.dateLabel')}
             </label>
             <input
               id="manual-date"
@@ -427,7 +490,7 @@ export default function SessionPage() {
           </div>
           <div>
             <label htmlFor="manual-time" className="type-caption mb-1 block text-muted">
-              giờ bắt đầu
+              {t('manual.timeLabel')}
             </label>
             <input
               id="manual-time"
@@ -452,29 +515,33 @@ export default function SessionPage() {
             min={5}
             max={600}
             compact
-            label="thời lượng tự chỉnh"
+            label={t('duration.label')}
           />
         </div>
 
         <div className="mt-4">
-          <p className="type-caption mb-1 text-muted">part</p>
+          <p className="type-caption mb-1 text-muted">{t('subject.labelShort')}</p>
           <div className="flex flex-wrap gap-1.5">
-            {[1, 2, 3, 4, 5, 6, 7].map((n) => (
-              <PartChip
-                key={n}
-                part={n}
-                active={mPart === n}
+            {activeSubjects.map((s) => (
+              <SubjectChip
+                key={s.id}
+                name={s.name}
+                colorHex={s.colorHex}
+                active={mSubjectId === s.id}
                 onClick={() => {
-                  setMPart((cur) => (cur === n ? 0 : n))
+                  setMSubjectId((cur) => (cur === s.id ? 0 : s.id!))
                   setMSaved(false)
                 }}
               />
             ))}
+            <Link to="/mon-hoc" className="part-chip">
+              {t('subject.addNew')}
+            </Link>
           </div>
         </div>
 
         <div className="mt-4">
-          <p className="type-caption mb-1 text-muted">hoạt động</p>
+          <p className="type-caption mb-1 text-muted">{t('activity.label')}</p>
           <div className="flex flex-wrap gap-2">
             {ACTIVITIES.map((a) => (
               <OptionPill
@@ -484,9 +551,9 @@ export default function SessionPage() {
                   setMActivity(a)
                   setMSaved(false)
                 }}
-                ariaLabel={`Hoạt động ${a}`}
+                ariaLabel={t('activity.aria', { name: activityDisplay(a) })}
               >
-                {a}
+                {activityDisplay(a)}
               </OptionPill>
             ))}
           </div>
@@ -494,12 +561,12 @@ export default function SessionPage() {
 
         <div className="mt-4">
           <label htmlFor="manual-note" className="type-caption mb-1 block text-muted">
-            ghi chú ngắn (tuỳ chọn)
+            {t('manual.noteLabel')}
           </label>
           <input
             id="manual-note"
             className={inputCls}
-            placeholder="vd. luyện Pair 3, sai 2 câu"
+            placeholder={t('manual.notePlaceholder')}
             value={mNote}
             onChange={(e) => {
               setMNote(e.target.value)
@@ -510,13 +577,13 @@ export default function SessionPage() {
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <PrimaryButton onClick={() => void saveManual()} disabled={mSaving}>
-            <Icon name="plus" size={16} /> {mSaving ? 'Đang lưu…' : 'Lưu buổi học'}
+            <Icon name="plus" size={16} /> {mSaving ? t('save.saving') : t('manual.save')}
           </PrimaryButton>
           {mSaved && (
             <span className="type-caption inline-flex items-center gap-1 text-teal">
-              <HanddrawnCheck size={14} /> đã lưu —{' '}
+              <HanddrawnCheck size={14} /> {t('manual.savedPrefix')}{' '}
               <Link to="/" className="underline underline-offset-2">
-                xem trang Hôm nay
+                {t('manual.seeToday')}
               </Link>
             </span>
           )}

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <pattern id="hatch-m" width="14" height="14" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <line x1="0" y1="0" x2="0" y2="14" stroke="#4EB09B" stroke-width="4" opacity="0.5"/>
+    </pattern>
+  </defs>
+  <rect width="512" height="512" rx="112.64" fill="#FBF6EE"/>
+  <ellipse cx="256" cy="268" rx="196" ry="140" fill="#4EB09B"/>
+  <g fill="none" stroke="#FBF6EE" stroke-width="34" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M112 232 L134 196 L134 340"/>
+    <ellipse cx="244" cy="268" rx="45" ry="72"/>
+    <ellipse cx="358" cy="268" rx="45" ry="72"/>
+  </g>
+  <path d="M418 116 C421.12 134.2 425.8 138.88 444 142 C425.8 145.12 421.12 149.8 418 168 C414.88 149.8 410.2 145.12 392 142 C410.2 138.88 414.88 134.2 418 116 Z" fill="#F28076"/>
+</svg>

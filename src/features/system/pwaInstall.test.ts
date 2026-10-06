@@ -4,7 +4,9 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { INSTALL_STEPS, OTHER_DEVICE_HINTS, detectPlatform } from './pwaInstall'
+import { dicts } from '@core/i18n'
+
+import { INSTALL_STEP_KEYS, OTHER_DEVICE_HINT_KEYS, detectPlatform } from './pwaInstall'
 
 const UA_IOS = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
 const UA_IPAD = 'Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1'
@@ -33,11 +35,21 @@ describe('detectPlatform', () => {
 })
 
 describe('nội dung hướng dẫn', () => {
-  it('mỗi nền đều có đủ các bước, không chuỗi rỗng', () => {
+  it('mỗi nền đều có đủ các bước dạng KEY, và key nào cũng có chuỗi hiển thị vi/en không rỗng', () => {
     for (const key of ['ios', 'android', 'desktop'] as const) {
-      expect(INSTALL_STEPS[key].length).toBeGreaterThanOrEqual(3)
-      for (const step of INSTALL_STEPS[key]) expect(step.trim().length).toBeGreaterThan(0)
-      expect(OTHER_DEVICE_HINTS[key].length).toBeGreaterThan(0)
+      expect(INSTALL_STEP_KEYS[key].length).toBeGreaterThanOrEqual(3)
+      for (const stepKey of INSTALL_STEP_KEYS[key]) {
+        expect(stepKey.trim().length).toBeGreaterThan(0)
+        for (const lang of ['vi', 'en'] as const) {
+          const text = dicts.settings[lang][stepKey]
+          expect(typeof text === 'string' && text.trim().length > 0).toBe(true)
+        }
+      }
+      const hintKey = OTHER_DEVICE_HINT_KEYS[key]
+      for (const lang of ['vi', 'en'] as const) {
+        const text = dicts.settings[lang][hintKey]
+        expect(typeof text === 'string' && text.trim().length > 0).toBe(true)
+      }
     }
   })
 })

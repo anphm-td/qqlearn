@@ -3,15 +3,15 @@ import { Link } from 'react-router-dom'
 
 import EmptyState from '@/components/ui/EmptyState'
 import NoteCard from '@/components/ui/NoteCard'
-
 import { todayISO } from '@core/date'
 import { repos } from '@data'
+import { useT } from '@data/useT'
 
 import { queryRag } from './ragClient'
 import {
   buildSuggestionPrompt,
   pickSuggestion,
-  sumMinutesByPart,
+  sumMinutesBySubject,
   weekWindowISO,
   type Suggestion,
   type SuggestionInput,
@@ -20,23 +20,28 @@ import {
 /*
  * [ĐIỂM GHÉP CHÉO — team SMART sở hữu file này]
  * D14 — card "Hôm nay nên học gì" trên Home (Home render sẵn ở TodayPage).
- * Ưu tiên: lỗi sai chưa reviewed → thẻ SRS đến hạn hôm nay → Part ít giờ nhất
+ * Ưu tiên: lỗi sai chưa reviewed → thẻ SRS đến hạn hôm nay → môn ít giờ nhất
  * trong 7 ngày qua (logic thuần ở ./suggestion.ts, có test).
  * Card tự quản dữ liệu: đọc settings + sổ tay qua repos trong effect CÓ catch
  * (đọc settings qua SettingsRepo thay vì useSettings() vì hook scaffold không bắt
  * lỗi — môi trường không có IndexedDB sẽ sinh unhandled rejection làm rơi smoke test),
  * tự hỏi RAG khi ragBaseUrl đã cấu hình (RAG lỗi → im lặng fallback gợi ý tại chỗ),
  * tự hiển thị loading/empty.
+ * i18n: mọi chuỗi hiển thị qua useT('smart'); lang cũng truyền xuống pickSuggestion/
+ * buildSuggestionPrompt để gợi ý + prompt dịch theo ngôn ngữ hiện tại.
  * Bề rộng tự thích ứng (không khoán width) — Home desktop sẽ đặt vào cột phải.
  */
 
 interface DayFacts {
   unreviewedMistakes: number
   dueCards: number
-  minutesByPart: Partial<Record<number, number>>
+  minutesBySubject: Partial<Record<number, number>>
+  /** Các môn đang học (đã lọc lưu trữ) — cho gợi ý "môn ít giờ nhất" + màu washi. */
+  subjects: { id: number; name: string; colorHex: string }[]
 }
 
 export default function SuggestionCard() {
+  const { t, lang } = useT('smart')
   const [facts, setFacts] = useState<DayFacts | null>(null)
   const [ragBaseUrl, setRagBaseUrl] = useState('')
   const [loadFailed, setLoadFailed] = useState(false)
@@ -55,12 +60,16 @@ export default function SuggestionCard() {
         const mistakes = await repos.mistakes.list()
         const dueCards = await repos.srs.listDue(today)
         const sessions = await repos.sessions.listBetween(from, today)
+        const subjects = await repos.subjects.list()
         if (!alive) return
         setRagBaseUrl(settings.ragBaseUrl.trim())
         setFacts({
           unreviewedMistakes: mistakes.filter((m) => !m.reviewed).length,
           dueCards: dueCards.length,
-          minutesByPart: sumMinutesByPart(sessions),
+          minutesBySubject: sumMinutesBySubject(sessions),
+          subjects: subjects
+            .filter((s) => !s.archived && s.id != null)
+            .map((s) => ({ id: s.id as number, name: s.name, colorHex: s.colorHex })),
         })
       } catch {
         // IndexedDB/đọc dữ liệu lỗi — card vẫn hiện, chỉ là không gợi ý được.
@@ -76,13 +85,17 @@ export default function SuggestionCard() {
   const suggestion: Suggestion | null = useMemo(
     () =>
       facts
-        ? pickSuggestion({
-            unreviewedMistakes: facts.unreviewedMistakes,
-            dueCards: facts.dueCards,
-            minutesByPart: facts.minutesByPart,
-          } satisfies SuggestionInput)
+        ? pickSuggestion(
+            {
+              unreviewedMistakes: facts.unreviewedMistakes,
+              dueCards: facts.dueCards,
+              minutesBySubject: facts.minutesBySubject,
+              subjects: facts.subjects,
+            } satisfies SuggestionInput,
+            lang,
+          )
         : null,
-    [facts],
+    [facts, lang],
   )
 
   // 2) Khi backend RAG đã cấu hình — hỏi thêm để có gợi ý theo tài liệu.
@@ -92,35 +105,38 @@ export default function SuggestionCard() {
       return
     }
     let alive = true
-    void queryRag(ragBaseUrl, buildSuggestionPrompt(facts, todayISO())).then((outcome) => {
+    void queryRag(ragBaseUrl, buildSuggestionPrompt(facts, todayISO(), lang)).then((outcome) => {
       if (!alive) return
       setRagText(outcome.ok && outcome.answer ? outcome.answer : null)
     })
     return () => {
       alive = false
     }
-  }, [ragBaseUrl, facts])
+  }, [ragBaseUrl, facts, lang])
 
   const loading = !facts && !loadFailed
 
+  // Washi màu theo môn được gợi ý (môn 0/không gợi ý môn → neutral).
+  const suggestedSubject = facts?.subjects.find((s) => s.id === suggestion?.subjectId)
+
   return (
-    <NoteCard washi="toeic" title="Gợi ý hôm nay" tag="gợi ý" subject="TOEIC">
-      {loading && <p className="type-body text-muted">Đang xem lại sổ của bạn…</p>}
+    <NoteCard washiHex={suggestedSubject?.colorHex} title={t('card.title')} tag={t('card.tag')}>
+      {loading && <p className="type-body text-muted">{t('card.loading')}</p>}
 
       {loadFailed && (
         <EmptyState
-          message="Chưa đọc được sổ tay nên mình chưa gợi ý được. Mở lại trang là thử lại được ngay nhé."
+          message={t('card.loadFailed')}
           className="w-full"
         />
       )}
 
       {suggestion && suggestion.kind === 'start' && (
         <EmptyState
-          message="Chưa có dữ liệu để gợi ý. Bắt đầu một buổi học ngắn hoặc thêm vài từ mới là card này biết việc ngay."
+          message={t('card.empty')}
           className="w-full"
           action={
             <Link to="/hoc" className="btn btn-primary type-body">
-              Bắt đầu học
+              {t('card.startAction')}
             </Link>
           }
         />
@@ -141,14 +157,14 @@ export default function SuggestionCard() {
           {ragText ? (
             <div className="mt-2 border-t border-dashed border-rule pt-2">
               <p className="type-body whitespace-pre-wrap">{ragText}</p>
-              <p className="type-caption mt-1 text-muted">— từ trợ lý học tập</p>
+              <p className="type-caption mt-1 text-muted">{t('card.ragSource')}</p>
             </div>
           ) : (
             !ragBaseUrl && (
               <p className="type-caption mt-2 text-muted">
-                Muốn gợi ý dựa trên tài liệu đề thi?{' '}
+                {t('card.connectPrompt')}{' '}
                 <Link to="/caidat" className="text-teal underline underline-offset-2">
-                  Kết nối máy trợ lý trong Cài đặt
+                  {t('card.connectLink')}
                 </Link>
                 .
               </p>

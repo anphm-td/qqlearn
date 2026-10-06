@@ -12,28 +12,20 @@ export function detectPlatform(userAgent: string): InstallPlatform {
   return 'desktop'
 }
 
-/** Các bước cài "Thêm vào Màn hình chính" theo thiết bị — ngôn ngữ thân thiện, không thuật ngữ. */
-export const INSTALL_STEPS: Record<InstallPlatform, string[]> = {
-  ios: [
-    'Mở Sổ bằng trình duyệt Safari',
-    'Bấm nút Chia sẻ (hình ô vuông có mũi tên hướng lên)',
-    'Cuộn xuống chọn "Thêm vào Màn hình chính" rồi bấm "Thêm"',
-  ],
-  android: [
-    'Mở Sổ bằng Chrome',
-    'Bấm biểu tượng ba chấm ở góc phải màn hình',
-    'Chọn "Thêm vào Màn hình chính" (hoặc "Cài đặt ứng dụng") rồi bấm "Cài đặt"',
-  ],
-  desktop: [
-    'Mở Sổ trên Chrome hoặc Edge',
-    'Nhìn đầu thanh địa chỉ (bên phải) — bấm biểu tượng cài đặt',
-    'Chọn "Cài đặt" — Sổ sẽ mở thành cửa sổ riêng như một ứng dụng',
-  ],
+/**
+ * Các bước cài "Thêm vào Màn hình chính" theo thiết bị — dạng KEY trong từ điển
+ * 'settings' (src/core/i18n/dict/settings.ts, nhóm 'pwa.step.*'); UI tra chuỗi
+ * hiển thị qua t() theo ngôn ngữ đã chọn (SettingsPage — nơi duy nhất dùng).
+ */
+export const INSTALL_STEP_KEYS: Record<InstallPlatform, string[]> = {
+  ios: ['pwa.step.ios.1', 'pwa.step.ios.2', 'pwa.step.ios.3'],
+  android: ['pwa.step.android.1', 'pwa.step.android.2', 'pwa.step.android.3'],
+  desktop: ['pwa.step.desktop.1', 'pwa.step.desktop.2', 'pwa.step.desktop.3'],
 }
 
-/** Một dòng gợi ý cho các thiết bị KHÁC thiết bị hiện tại. */
-export const OTHER_DEVICE_HINTS: Record<InstallPlatform, string> = {
-  ios: 'Trên máy tính hoặc Android: mở Sổ bằng Chrome/Edge rồi chọn "Cài đặt" tại thanh địa chỉ hoặc menu ba chấm.',
-  android: 'Trên iPhone: Safari → Chia sẻ → "Thêm vào Màn hình chính". Trên máy tính: biểu tượng cài đặt ở thanh địa chỉ.',
-  desktop: 'Trên iPhone: Safari → Chia sẻ → "Thêm vào Màn hình chính". Trên Android: Chrome → menu ba chấm → "Thêm vào Màn hình chính".',
+/** Key của một dòng gợi ý cho các thiết bị KHÁC thiết bị hiện tại (dict 'settings'). */
+export const OTHER_DEVICE_HINT_KEYS: Record<InstallPlatform, string> = {
+  ios: 'pwa.otherDevice.ios',
+  android: 'pwa.otherDevice.android',
+  desktop: 'pwa.otherDevice.desktop',
 }

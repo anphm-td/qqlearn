@@ -14,7 +14,7 @@ tại `0.0.0.0:5178`, in rõ URL truy cập khi mở: `http://localhost:5178` + 
 
 - Phục vụ bản build PWA (thư mục `../dist` — chạy `npm run build` trước) + SPA
   fallback về `index.html`; cài PWA xong vẫn dùng được qua server này.
-- Cung cấp API CRUD cho **9 bảng** map 1-1 với 9 ports trong `src/core/ports`:
+- Cung cấp API CRUD cho **các bảng** map 1-1 với các ports trong `src/core/ports` (môn học, buổi học, ghi chú, từ vựng, SRS, lỗi sai, điểm, ảnh, chat + khôi phục):
   `settings · sessions · dailyNotes · vocab · srsCards · mistakes · scores ·
   photos · chatMessages` (mọi lệnh đọc/ghi nằm dưới `/api/…`), cộng thêm
   `POST /api/restore` (RestoreRepo) — khôi phục toàn bộ bản sao lưu trong MỘT
@@ -34,7 +34,7 @@ tại `0.0.0.0:5178`, in rõ URL truy cập khi mở: `http://localhost:5178` + 
 ```
 server/
   tsconfig.json     build riêng bằng tsc (rootDir = gốc dự án để dùng src/core)
-  src/db.ts         mở SQLite + schema 9 bảng (giữ id/date + updatedAt)
+  src/db.ts         mở SQLite + schema các bảng (giữ id/date + updatedAt) + migration môn học
   src/schemas.ts    Zod request/response — khai báo lại từ src/core/schemas.ts
   src/rows.ts       hàng SQLite ↔ JSON (boolean 0/1, JSON text, BLOB ↔ base64)
   src/handlers/     module thuần (db, …) — test gọi thẳng, không cần mở cổng
@@ -70,7 +70,7 @@ Chế độ dev (vite :5173) đã cấu hình proxy `/api` → `http://localhost
 
 ## Lộ trình nâng cấp tiếp theo
 
-1. **GIỮ NGUYÊN `src/core/`** — types, Zod schemas và 9 ports là hợp đồng dùng
+1. **GIỮ NGUYÊN `src/core/`** — types, Zod schemas và các ports là hợp đồng dùng
    chung. Không sửa UI.
 2. Đồng bộ 2 chiều local ↔ server: so khớp `updatedAt`, thêm bảng `sync_queue`
    nếu cần.

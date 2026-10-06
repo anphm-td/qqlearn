@@ -1,5 +1,5 @@
 /*
- * Đường dây API — mỗi endpoint của 9 bảng map 1-1 với một method của port
+ * Đường dây API — mỗi endpoint của các bảng map 1-1 với một method của port
  * trong src/core/ports (app gọi qua src/data/http/*):
  *
  *   SettingsRepo  → GET/PATCH /api/settings
@@ -33,6 +33,7 @@ import * as scoreHandlers from './handlers/scores.js'
 import * as sessionHandlers from './handlers/sessions.js'
 import * as settingsHandlers from './handlers/settings.js'
 import * as srsHandlers from './handlers/srs.js'
+import * as subjectHandlers from './handlers/subjects.js'
 import * as vocabHandlers from './handlers/vocab.js'
 import { ApiError } from './errors.js'
 
@@ -68,6 +69,18 @@ export function createApiRouter(db: DatabaseSync): Router {
 
   // ===== Restore (khôi phục bản sao lưu — 1 transaction, xoá sạch rồi ghi) =====
   router.post('/restore', wrap((req, res) => res.json(restoreHandlers.restoreAll(db, req.body))))
+
+  // ===== Subjects (môn học) =====
+  router.get('/subjects', wrap((_req, res) => res.json(subjectHandlers.listSubjects(db))))
+  router.post('/subjects', wrap((req, res) => res.status(201).json(subjectHandlers.createSubject(db, req.body))))
+  router.put('/subjects/:id', wrap((req, res) => res.json(subjectHandlers.updateSubject(db, param(req, 'id'), req.body))))
+  router.delete(
+    '/subjects/:id',
+    wrap((req, res) => {
+      subjectHandlers.deleteSubject(db, param(req, 'id'))
+      res.json({ ok: true })
+    }),
+  )
 
   // ===== Sessions =====
   router.get('/sessions', wrap((req, res) => res.json(sessionHandlers.listSessions(db, req.query))))
@@ -234,7 +247,7 @@ export function createApiRouter(db: DatabaseSync): Router {
   )
 
   // ===== Health =====
-  router.get('/health', wrap((_req, res) => res.json({ ok: true, app: 'qlearn-study-log' })))
+  router.get('/health', wrap((_req, res) => res.json({ ok: true, app: 'qqlearn' })))
 
   return router
 }

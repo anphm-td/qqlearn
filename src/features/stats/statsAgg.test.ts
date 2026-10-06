@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 
 import {
   aggregateBuckets,
-  allocateByPart,
+  allocateBySubject,
   buildMonthHeatmap,
   computeStreak,
   endOfWeekISO,
@@ -16,11 +16,13 @@ import {
   formatHours,
   heatmapLevel,
   lastDayOfMonthISO,
+  monthShort,
   shortDate,
   startOfWeekISO,
+  weekdayLabelsMon,
 } from './statsAgg'
 
-const row = (date: string, durationMin: number, part = 1) => ({ date, durationMin, part })
+const row = (date: string, durationMin: number, subjectId = 1) => ({ date, durationMin, subjectId })
 
 describe('tuần bắt đầu thứ Hai', () => {
   it('startOfWeekISO: thứ Bảy lùi về thứ Hai', () => {
@@ -117,28 +119,44 @@ describe('aggregateBuckets — giờ học theo ngày/tuần/tháng', () => {
     const buckets = aggregateBuckets([row('2026-10-03', -20)], 'day', '2026-10-03', { count: 1 })
     expect(buckets[0].minutes).toBe(0)
   })
+
+  it('mặc định lang="vi" (CN/T2…, T10); lang="en" dịch nhãn thứ/tháng', () => {
+    const vi = aggregateBuckets(rows, 'day', '2026-10-03')
+    expect(vi[0].label).toBe('CN')
+    expect(vi[6].label).toBe('T7')
+
+    const en = aggregateBuckets(rows, 'day', '2026-10-03', {}, 'en')
+    expect(en[0].label).toBe('Sun')
+    expect(en[6].label).toBe('Sat')
+    expect(aggregateBuckets(rows, 'month', '2026-10-03', {}, 'en')[5].label).toBe('Oct')
+
+    // Nhãn thứ theo tuần bắt đầu thứ Hai — vi và en.
+    expect(weekdayLabelsMon()).toEqual(['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'])
+    expect(weekdayLabelsMon('en')).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'])
+    expect(monthShort(10, 'en')).toBe('Oct')
+  })
 })
 
-describe('allocateByPart — phân bổ theo Part', () => {
-  it('gom theo Part, sắp giảm dần, Part 0 ("chưa rõ") xếp cuối', () => {
-    const slices = allocateByPart([
+describe('allocateBySubject — phân bổ theo môn', () => {
+  it('gom theo môn, sắp giảm dần, môn 0 ("chưa phân môn") xếp cuối', () => {
+    const slices = allocateBySubject([
       row('2026-10-01', 30, 1),
       row('2026-10-02', 20, 1),
       row('2026-10-02', 45, 3),
-      row('2026-10-03', 10, 7),
+      row('2026-10-03', 10, 2),
       row('2026-10-03', 15, 0),
     ])
     expect(slices).toEqual([
-      { part: 1, minutes: 50 },
-      { part: 3, minutes: 45 },
-      { part: 7, minutes: 10 },
-      { part: 0, minutes: 15 },
+      { subjectId: 1, minutes: 50 },
+      { subjectId: 3, minutes: 45 },
+      { subjectId: 2, minutes: 10 },
+      { subjectId: 0, minutes: 15 },
     ])
   })
 
-  it('Part có 0 phút bị bỏ qua', () => {
-    expect(allocateByPart([row('2026-10-03', 25, 2), row('2026-10-03', 0, 5)])).toEqual([
-      { part: 2, minutes: 25 },
+  it('môn có 0 phút bị bỏ qua', () => {
+    expect(allocateBySubject([row('2026-10-03', 25, 2), row('2026-10-03', 0, 5)])).toEqual([
+      { subjectId: 2, minutes: 25 },
     ])
   })
 })

@@ -34,15 +34,17 @@ export function createSession(db: DatabaseSync, body: unknown): SessionData {
   const input = parseBody(sessionCreateSchema, body)
   const info = db
     .prepare(
-      `INSERT INTO sessions (date, startedAt, endedAt, durationMin, part, activity, source, note, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO sessions (date, startedAt, endedAt, durationMin, subject_id, part, activity, source, note, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.date,
       input.startedAt,
       input.endedAt,
       input.durationMin,
-      input.part,
+      input.subjectId,
+      // part = cột legacy của khung TOEIC cũ — hàng mới luôn ghi 0.
+      0,
       input.activity,
       input.source,
       input.note,
@@ -66,7 +68,7 @@ export function updateSession(db: DatabaseSync, rawId: string, body: unknown): v
   if (patch.startedAt !== undefined) push('startedAt', patch.startedAt)
   if (patch.endedAt !== undefined) push('endedAt', patch.endedAt)
   if (patch.durationMin !== undefined) push('durationMin', patch.durationMin)
-  if (patch.part !== undefined) push('part', patch.part)
+  if (patch.subjectId !== undefined) push('subject_id', patch.subjectId)
   if (patch.activity !== undefined) push('activity', patch.activity)
   if (patch.source !== undefined) push('source', patch.source)
   if (patch.note !== undefined) push('note', patch.note)

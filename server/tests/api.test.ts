@@ -19,6 +19,7 @@ import * as scores from '../src/handlers/scores.js'
 import * as sessions from '../src/handlers/sessions.js'
 import * as settings from '../src/handlers/settings.js'
 import * as srs from '../src/handlers/srs.js'
+import * as subjectsH from '../src/handlers/subjects.js'
 import * as vocab from '../src/handlers/vocab.js'
 
 let db: DatabaseSync
@@ -44,7 +45,7 @@ const SESSION_INPUT = {
   startedAt: 1_759_276_800_000,
   endedAt: null,
   durationMin: 25,
-  part: 2,
+  subjectId: 2,
   activity: 'nghe',
   source: 'timer' as const,
   note: '',
@@ -54,7 +55,7 @@ const NOTE_INPUT = {
   date: '2026-10-02',
   partStudied: [1, 2],
   newWords: 5,
-  mistakesSummary: 'Part 2 hội thoại',
+  mistakesSummary: 'Toán — bài 2 hội thoại',
   reflection: 'Cần nghe chậm lại',
   photoIds: [],
   autoDrafted: false,
@@ -71,6 +72,7 @@ describe('settings handler', () => {
     expect(row.syncMode).toBe('local')
     expect(row.serverUrl).toBe('')
     expect(row.checkinEnabled).toBe(true)
+    expect(row.language).toBe('vi')
     expect(row.updatedAt).toBeGreaterThan(0)
     // get lần nữa không nhân bản hàng
     expect(settings.getSettings(db).updatedAt).toBe(row.updatedAt)
@@ -106,6 +108,22 @@ describe('settings handler', () => {
     const next = settings.updateSettings(db, { dailyGoalMinutes: 60 })
     expect(next.dailyGoalMinutes).toBe(60)
     expect(next.checkinEnabled).toBe(false)
+  })
+
+  it('patch language → ghi đúng; patch trường khác KHÔNG reset language (Zod không bung default)', () => {
+    // Đổi ngôn ngữ trong Cài đặt → server ghi đúng 'en'.
+    const switched = settings.updateSettings(db, { language: 'en' })
+    expect(switched.language).toBe('en')
+    // Patch MỘT trường khác (key language vắng mặt) không được reset về 'vi'
+    // (settingsPatchSchema đè language bằng .optional() không .default()).
+    const next = settings.updateSettings(db, { dailyGoalMinutes: 75 })
+    expect(next.dailyGoalMinutes).toBe(75)
+    expect(next.language).toBe('en')
+    // Đổi ngược lại 'vi' → ghi đúng.
+    settings.updateSettings(db, { language: 'vi' })
+    expect(settings.getSettings(db).language).toBe('vi')
+    // Giá trị lạ (không phải vi/en) → ApiError 400.
+    expectApiError(400, () => settings.updateSettings(db, { language: 'fr' as never }))
   })
 })
 
@@ -173,14 +191,14 @@ describe('notes handler', () => {
     expect(notes.listNotes(db, { from: '2026-10-03', to: '2026-10-31' })).toHaveLength(1)
   })
 
-  it('partStudied có part 9 → 400; ngày sai định dạng → 400', () => {
-    expectApiError(400, () => notes.putNote(db, '2026-10-02', { ...NOTE_INPUT, partStudied: [9] }))
+  it('partStudied có id âm → 400; ngày sai định dạng → 400', () => {
+    expectApiError(400, () => notes.putNote(db, '2026-10-02', { ...NOTE_INPUT, partStudied: [-1] }))
     expectApiError(400, () => notes.getNote(db, 'not-a-date'))
   })
 })
 
 describe('vocab handler', () => {
-  const VOCAB = { word: 'commute (v/n)', meaning: 'đi làm hằng ngày', example: 'I commute by bus.', part: 4, sourceTest: '' }
+  const VOCAB = { word: 'commute (v/n)', meaning: 'đi làm hằng ngày', example: 'I commute by bus.', subjectId: 2, sourceTest: '' }
 
   it('create + list + search (không phân biệt hoa thường)', () => {
     const row = vocab.createVocab(db, VOCAB)
@@ -239,8 +257,8 @@ describe('srs handler', () => {
 
   it('listDue lấy thẻ đến hạn (dueDate <= ngày), bỏ thẻ mồ côi (từ đã xoá)', () => {
     // listDue JOIN vocab — tạo 2 từ thật để thẻ không bị coi là mồ côi.
-    const v1 = vocab.createVocab(db, { word: 'commute', meaning: '', example: '', part: 0, sourceTest: '' })
-    const v2 = vocab.createVocab(db, { word: 'deliberate', meaning: '', example: '', part: 0, sourceTest: '' })
+    const v1 = vocab.createVocab(db, { word: 'commute', meaning: '', example: '', subjectId: 0, sourceTest: '' })
+    const v2 = vocab.createVocab(db, { word: 'deliberate', meaning: '', example: '', subjectId: 0, sourceTest: '' })
     srs.createSrsForVocab(db, { vocabId: v1.id, dueDate: '2026-10-01' })
     srs.createSrsForVocab(db, { vocabId: v2.id, dueDate: '2026-10-09' })
     const due = srs.listDueSrs(db, '2026-10-05')
@@ -275,7 +293,7 @@ describe('srs handler', () => {
 describe('mistakes handler', () => {
   const MISTAKE = {
     testNo: 2,
-    part: 3,
+    subjectId: 3,
     questionNo: 14,
     myAnswer: 'A',
     correctAnswer: 'B',
@@ -292,31 +310,78 @@ describe('mistakes handler', () => {
     expect(after.reviewed).toBe(true)
   })
 
-  it('update một phần, id lạ → 404, part 9 → 400, remove', () => {
+  it('update một phần, id lạ → 404, môn không hợp lệ → 400, remove', () => {
     const row = mistakes.createMistake(db, MISTAKE)
     mistakes.updateMistake(db, String(row.id), { cause: 'chăm chú' })
     const [after] = mistakes.listMistakes(db)
     expect(after.cause).toBe('chăm chú')
     expect(after.questionNo).toBe(14)
     expectApiError(404, () => mistakes.updateMistake(db, '9999', { cause: 'x' }))
-    expectApiError(400, () => mistakes.createMistake(db, { ...MISTAKE, part: 9 }))
+    expectApiError(400, () => mistakes.createMistake(db, { ...MISTAKE, subjectId: -1 }))
     mistakes.deleteMistake(db, String(row.id))
     expect(mistakes.listMistakes(db)).toHaveLength(0)
   })
 })
 
+describe('subjects handler', () => {
+  it('DB mới tự seed 4 môn (TOEIC · Toán · Tiếng Nhật · Lập trình)', () => {
+    const rows = subjectsH.listSubjects(db)
+    expect(rows.map((r) => r.name)).toEqual(['TOEIC', 'Toán', 'Tiếng Nhật', 'Lập trình'])
+    expect(rows[0]).toMatchObject({ colorHex: '#FFD273', goalMinutesPerDay: 0, archived: false })
+  })
+
+  it('create + update + name trùng (không phân biệt hoa thường) → 409', () => {
+    const created = subjectsH.createSubject(db, { name: 'Vật lí', colorHex: '#FBC193', goalMinutesPerDay: 30, archived: false })
+    expect(created.id).toBeGreaterThan(4)
+    subjectsH.updateSubject(db, String(created.id), { goalMinutesPerDay: 45 })
+    expect(subjectsH.listSubjects(db).find((r) => r.id === created.id)?.goalMinutesPerDay).toBe(45)
+    expectApiError(409, () => subjectsH.createSubject(db, { name: 'vật lí', colorHex: '#FAE0C7', goalMinutesPerDay: 0, archived: false }))
+    expectApiError(400, () => subjectsH.createSubject(db, { name: '', colorHex: '#FBC193', goalMinutesPerDay: 0, archived: false }))
+    expectApiError(400, () => subjectsH.createSubject(db, { name: 'Hóa', colorHex: '#123456', goalMinutesPerDay: 0, archived: false }))
+  })
+
+  it('xóa môn CÒN dữ liệu → 409 (chỉ archive); xóa môn trống → ok', () => {
+    const rows = subjectsH.listSubjects(db)
+    const toeicId = rows[0].id
+    // Gắn 1 buổi học vào môn TOEIC → môn "có dữ liệu", chặn xóa.
+    sessions.createSession(db, { ...SESSION_INPUT, subjectId: toeicId })
+    expectApiError(409, () => subjectsH.deleteSubject(db, String(toeicId)))
+    // Ghi chú cuối ngày nhắc tới môn trong partStudied → cũng chặn xóa.
+    notes.putNote(db, '2026-10-09', {
+      date: '2026-10-09',
+      partStudied: [toeicId],
+      newWords: 0,
+      mistakesSummary: '',
+      reflection: 'ôn Toán',
+      photoIds: [],
+      autoDrafted: false,
+      updatedAt: 0,
+    })
+    expectApiError(409, () => subjectsH.deleteSubject(db, String(toeicId)))
+    // Môn không có dữ liệu nào thì xóa được.
+    const empty = subjectsH.createSubject(db, { name: 'Trống', colorHex: '#FAE0C7', goalMinutesPerDay: 0, archived: false })
+    subjectsH.deleteSubject(db, String(empty.id))
+    expect(subjectsH.listSubjects(db).some((r) => r.id === empty.id)).toBe(false)
+  })
+})
+
 describe('scores handler', () => {
-  it('create đúng tổng → trả về bản ghi', () => {
-    const row = scores.createScore(db, { date: '2026-10-01', testLabel: 'ETS 2023 · Đề 2', listening: 350, reading: 400, total: 750 })
+  it('create một điểm theo môn → trả về bản ghi đầy đủ', () => {
+    const row = scores.createScore(db, { date: '2026-10-01', subjectId: 2, label: 'Toán — Định lí Pytago', score: 8, note: 'sai bài 4' })
     expect(row.id).toBeGreaterThan(0)
+    expect(row.label).toBe('Toán — Định lí Pytago')
+    expect(row.score).toBe(8)
     expect(scores.listScores(db)).toHaveLength(1)
   })
 
-  it('total lệch listening + reading → 400; remove xóa', () => {
+  it('score âm/nhãn trống → 400; remove xóa', () => {
     expectApiError(400, () =>
-      scores.createScore(db, { date: '2026-10-01', testLabel: 'ETS', listening: 350, reading: 400, total: 700 }),
+      scores.createScore(db, { date: '2026-10-01', subjectId: 2, label: 'Toán', score: -1, note: '' }),
     )
-    const row = scores.createScore(db, { date: '2026-10-01', testLabel: 'ETS', listening: 350, reading: 400, total: 750 })
+    expectApiError(400, () =>
+      scores.createScore(db, { date: '2026-10-01', subjectId: 2, label: '', score: 8, note: '' }),
+    )
+    const row = scores.createScore(db, { date: '2026-10-01', subjectId: 2, label: 'Toán', score: 8, note: '' })
     scores.deleteScore(db, String(row.id))
     expect(scores.listScores(db)).toHaveLength(0)
   })
@@ -388,14 +453,19 @@ const RESTORE_PAYLOAD = {
     onboardingDone: true,
     pomodoro: { focusMin: 30, breakMin: 5 },
   },
-  sessions: [SESSION_INPUT],
-  vocab: [{ word: 'commute', meaning: 'đi làm', example: 'I commute.', part: 3, sourceTest: '' }],
+  // Id môn CŨ trong bản sao lưu (20/21) — handler phải ánh xạ sang id mới rồi remap.
+  subjects: [
+    { id: 20, name: 'Toán', colorHex: '#BFAEE3', goalMinutesPerDay: 30, archived: false },
+    { id: 21, name: 'Hoá', colorHex: '#FBC193', goalMinutesPerDay: 0, archived: false },
+  ],
+  sessions: [{ ...SESSION_INPUT, subjectId: 20 }],
+  vocab: [{ word: 'commute', meaning: 'đi làm', example: 'I commute.', subjectId: 21, sourceTest: '' }],
   srsCards: [{ vocabKey: 0, box: 2, dueDate: '2026-10-05', lastReviewed: 1, correctCount: 1 }],
   mistakes: [
-    { testNo: 1, part: 2, questionNo: 10, myAnswer: 'A', correctAnswer: 'B', cause: 'từ vựng', explanation: '', reviewed: false },
+    { testNo: 1, subjectId: 21, questionNo: 10, myAnswer: 'A', correctAnswer: 'B', cause: 'từ vựng', explanation: '', reviewed: false },
   ],
-  scores: [{ date: '2026-10-01', testLabel: 'Đề thử', listening: 300, reading: 300, total: 600 }],
-  dailyNotes: [NOTE_INPUT],
+  scores: [{ date: '2026-10-01', subjectId: 20, label: 'Bài thử', score: 9, note: '' }],
+  dailyNotes: [{ ...NOTE_INPUT, partStudied: [20, 0] }],
   chat: [{ sessionId: 's1', role: 'user' as const, content: 'xin chào' }],
   photos: [],
 }
@@ -441,6 +511,25 @@ describe('restore handler', () => {
       .prepare('INSERT INTO srsCards (vocabId, box, dueDate, lastReviewed, correctCount, updatedAt) VALUES (9999, 1, ?, NULL, 0, ?)')
       .run('2026-10-01', Date.now())
     expect(srs.listDueSrs(db, '2026-10-05')).toHaveLength(1)
+  })
+
+  it('subjects được ghi lại và subjectId được remap theo ánh xạ id cũ → id mới', () => {
+    restore.restoreAll(db, RESTORE_PAYLOAD)
+
+    const subjects = subjectsH.listSubjects(db)
+    const toan = subjects.find((r) => r.name === 'Toán')!
+    const hoa = subjects.find((r) => r.name === 'Hoá')!
+    expect(toan).toBeDefined()
+    expect(hoa).toBeDefined()
+    expect(toan.id).not.toBe(20) // id mới được sinh, không dùng lại id cũ
+
+    const [session] = sessions.listSessions(db, {})
+    expect(session.subjectId).toBe(toan.id)
+    expect(vocab.listVocab(db)[0].subjectId).toBe(hoa.id)
+    expect(mistakes.listMistakes(db)[0].subjectId).toBe(hoa.id)
+    expect(scores.listScores(db)[0].subjectId).toBe(toan.id)
+    // partStudied của dailyNotes cũng được remap (0 giữ nguyên)
+    expect(notes.getNote(db, '2026-10-02')?.partStudied).toEqual([toan.id, 0])
   })
 
   it('payload thiếu trường → 400', () => {

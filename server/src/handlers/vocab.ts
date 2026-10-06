@@ -42,10 +42,10 @@ export function createVocab(db: DatabaseSync, body: unknown): VocabData {
   const ts = Date.now()
   const info = db
     .prepare(
-      `INSERT INTO vocab (word, meaning, example, part, sourceTest, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO vocab (word, meaning, example, subject_id, part, sourceTest, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .run(input.word, input.meaning, input.example, input.part, input.sourceTest, ts, ts)
+    .run(input.word, input.meaning, input.example, input.subjectId, 0, input.sourceTest, ts, ts)
   const row = getRow<VocabRow>(db.prepare('SELECT * FROM vocab WHERE id = ?'), info.lastInsertRowid)
   if (!row) throw new ApiError(500, 'Không đọc lại được từ vừa tạo.')
   return assertShape(vocabResponseSchema, vocabRowToJs(row), 'Từ vựng')
@@ -63,7 +63,7 @@ export function updateVocab(db: DatabaseSync, rawId: string, body: unknown): voi
   if (patch.word !== undefined) push('word', patch.word)
   if (patch.meaning !== undefined) push('meaning', patch.meaning)
   if (patch.example !== undefined) push('example', patch.example)
-  if (patch.part !== undefined) push('part', patch.part)
+  if (patch.subjectId !== undefined) push('subject_id', patch.subjectId)
   if (patch.sourceTest !== undefined) push('sourceTest', patch.sourceTest)
   sets.push('updatedAt = ?')
   values.push(Date.now(), id)

@@ -4,8 +4,10 @@ import { Link } from 'react-router-dom'
 import { DangerButton, PrimaryButton } from '@/components/ui/buttons'
 import EmptyState from '@/components/ui/EmptyState'
 import HanddrawnCheck from '@/components/ui/HanddrawnCheck'
-import PartChip from '@/components/ui/PartChip'
+import SubjectChip from '@/components/ui/SubjectChip'
 import { repos, todayISO } from '@data/index'
+import { useSubjects } from '@data/useSubjects'
+import { useT } from '@data/useT'
 import type { SrsCard, Vocab } from '@core/types'
 
 import { daysUntil, nextBox, sortByDue } from './srs'
@@ -15,10 +17,14 @@ import { daysUntil, nextBox, sortByDue } from './srs'
  * Thẻ đến hạn hôm nay (repos.srs.listDue(todayISO())) → lật đáp án →
  * "Nhớ đúng" tăng hộp / "Chưa nhớ" về hộp 1; ghi lại bằng repos.srs.review().
  * Luật hộp + hạn ôn tách file thuần srs.ts (có test riêng).
+ * i18n: mọi chuỗi hiển thị qua useT('notebook') — dict ở src/core/i18n/dict/notebook.ts.
  */
 type Phase = 'loading' | 'front' | 'back' | 'feedback' | 'empty' | 'done' | 'error'
 
 export default function VocabReviewPage() {
+  const { t } = useT('notebook')
+  const { subjects } = useSubjects()
+  const subjectById = (id: number) => (subjects ?? []).find((s) => s.id === id)
   const [phase, setPhase] = useState<Phase>('loading')
   const [queue, setQueue] = useState<SrsCard[]>([])
   const [vocabMap, setVocabMap] = useState<Map<number, Vocab>>(new Map())
@@ -73,7 +79,7 @@ export default function VocabReviewPage() {
       setPhase('feedback')
     } catch {
       // Ghi kết quả không thành công — giữ nguyên thẻ để người học trả lời lại.
-      setAnswerError('Chưa ghi được kết quả ôn — thử lại nhé.')
+      setAnswerError(t('review.saveError'))
     }
   }
 
@@ -88,33 +94,31 @@ export default function VocabReviewPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="section-label">sổ tay · ôn tập</p>
+      <p className="section-label">{t('section.review')}</p>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h1 className="type-display">Ôn tập từ vựng</h1>
+        <h1 className="type-display">{t('review.title')}</h1>
         {(phase === 'front' || phase === 'back' || phase === 'feedback') && (
-          <p className="type-caption text-muted">
-            thẻ <span className="num">{idx + 1}</span>/<span className="num">{queue.length}</span>
-          </p>
+          <p className="type-caption text-muted">{t('review.counter', { current: idx + 1, total: queue.length })}</p>
         )}
       </div>
 
-      {phase === 'loading' && <p className="type-body text-muted">Đang lấy thẻ đến hạn…</p>}
+      {phase === 'loading' && <p className="type-body text-muted">{t('review.loading')}</p>}
 
       {phase === 'error' && (
         <EmptyState
-          message="Chưa lấy được thẻ đến hạn — có thể server PC chưa chạy hoặc máy chưa đọc được sổ cục bộ."
+          message={t('review.loadError')}
           action={
-            <PrimaryButton onClick={() => void load()}>Tải lại</PrimaryButton>
+            <PrimaryButton onClick={() => void load()}>{t('common.reload')}</PrimaryButton>
           }
         />
       )}
 
       {phase === 'empty' && (
         <EmptyState
-          message="Không có thẻ nào đến hạn ôn hôm nay. Thêm từ mới vào sổ, hoặc quay lại vào ngày mai nhé."
+          message={t('review.empty')}
           action={
             <Link to="/sotay/tu-vung" className="btn btn-primary type-body">
-              Về sổ từ vựng
+              {t('review.backToVocab')}
             </Link>
           }
         />
@@ -128,10 +132,11 @@ export default function VocabReviewPage() {
             </p>
           )}
           <Flashcard
-            word={vocab?.word ?? '(từ đã xoá khỏi sổ)'}
+            word={vocab?.word ?? t('review.deletedWord')}
             meaning={vocab?.meaning ?? ''}
             example={vocab?.example ?? ''}
-            part={vocab?.part ?? 0}
+            subjectName={vocab && vocab.subjectId > 0 ? subjectById(vocab.subjectId)?.name ?? t('common.deletedSubject') : undefined}
+            subjectColor={vocab ? subjectById(vocab.subjectId)?.colorHex : undefined}
             sourceTest={vocab?.sourceTest ?? ''}
             box={card.box}
             revealed={phase === 'back'}
@@ -142,44 +147,38 @@ export default function VocabReviewPage() {
       )}
 
       {phase === 'feedback' && card && (
-        <section className="paper-card flex flex-col items-center gap-3 px-4 py-6 text-center" aria-label="Kết quả thẻ">
+        <section className="paper-card flex flex-col items-center gap-3 px-4 py-6 text-center" aria-label={t('review.feedbackAria')}>
           {lastCorrect ? (
             <>
               <HanddrawnCheck size={44} />
-              <p className="type-h2">Chính xác!</p>
+              <p className="type-h2">{t('review.correct.title')}</p>
               <p className="type-body text-muted">
-                Thẻ lên hộp <span className="num">{nextBox(card.box, true)}</span>/5
+                {t('review.correct.moved', { box: nextBox(card.box, true) })}
                 {lastDays != null && (
                   <>
-                    {' '}· ôn lại sau <span className="num">{lastDays}</span> ngày
+                    {' · '}
+                    {t('review.correct.again', { days: lastDays })}
                   </>
                 )}
               </p>
             </>
           ) : (
             <>
-              <p className="type-h2">Chưa nhớ — không sao.</p>
-              <p className="type-body text-muted">
-                Thẻ về hộp <span className="num">1</span>, mai ôn lại tiếp nhé.
-              </p>
+              <p className="type-h2">{t('review.wrong.title')}</p>
+              <p className="type-body text-muted">{t('review.wrong.body', { box: 1 })}</p>
             </>
           )}
-          <PrimaryButton onClick={nextCard}>Thẻ tiếp theo</PrimaryButton>
+          <PrimaryButton onClick={nextCard}>{t('review.nextCard')}</PrimaryButton>
         </section>
       )}
 
       {phase === 'done' && (
-        <section className="paper-card flex flex-col items-center gap-2 px-4 py-6 text-center" aria-label="Tổng kết ôn tập">
-          <p className="type-h2">Xong rồi!</p>
-          <p className="type-body">
-            <span className="num">{stats.correct}</span> đúng ·{' '}
-            <span className="num">{stats.wrong}</span> chưa nhớ
-          </p>
-          <p className="type-caption text-muted">
-            Quay lại vào ngày mai để ôn tiếp theo lịch giãn cách.
-          </p>
+        <section className="paper-card flex flex-col items-center gap-2 px-4 py-6 text-center" aria-label={t('review.doneAria')}>
+          <p className="type-h2">{t('review.done.title')}</p>
+          <p className="type-body">{t('review.done.score', { correct: stats.correct, wrong: stats.wrong })}</p>
+          <p className="type-caption text-muted">{t('review.done.hint')}</p>
           <Link to="/sotay/tu-vung" className="btn btn-primary type-body mt-2">
-            Về sổ từ vựng
+            {t('review.backToVocab')}
           </Link>
         </section>
       )}
@@ -193,7 +192,8 @@ interface FlashcardProps {
   word: string
   meaning: string
   example: string
-  part: number
+  subjectName?: string
+  subjectColor?: string
   sourceTest: string
   box: number
   revealed: boolean
@@ -201,32 +201,31 @@ interface FlashcardProps {
   onAnswer: (correct: boolean) => void
 }
 
-function Flashcard({ word, meaning, example, part, sourceTest, box, revealed, onReveal, onAnswer }: FlashcardProps) {
+function Flashcard({ word, meaning, example, subjectName, subjectColor, sourceTest, box, revealed, onReveal, onAnswer }: FlashcardProps) {
+  const { t } = useT('notebook')
   return (
-    <section className="paper-card flex flex-col gap-3 px-4 py-6" aria-label="Thẻ ôn tập">
+    <section className="paper-card flex flex-col gap-3 px-4 py-6" aria-label={t('review.cardAria')}>
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="type-caption text-muted">
-          hộp <span className="num">{box}</span>/<span className="num">5</span>
-        </p>
-        {part > 0 && <PartChip part={part} />}
+        <p className="type-caption text-muted">{t('review.box', { box })}</p>
+        {subjectName && <SubjectChip name={subjectName} colorHex={subjectColor} />}
       </div>
 
       <p className="type-display break-words">{word}</p>
-      {sourceTest && <p className="type-caption text-muted">Nguồn: {sourceTest}</p>}
+      {sourceTest && <p className="type-caption text-muted">{t('vocab.source', { source: sourceTest })}</p>}
 
       {revealed ? (
         <>
           <hr className="dashed-rule" />
-          <p className="type-h2">{meaning || <span className="text-muted">Chưa ghi nghĩa.</span>}</p>
+          <p className="type-h2">{meaning || <span className="text-muted">{t('vocab.noMeaning')}</span>}</p>
           {example && <p className="type-body text-muted">“{example}”</p>}
           <div className="mt-2 flex flex-wrap gap-2">
-            <PrimaryButton onClick={() => onAnswer(true)}>Nhớ đúng</PrimaryButton>
-            <DangerButton onClick={() => onAnswer(false)}>Chưa nhớ</DangerButton>
+            <PrimaryButton onClick={() => onAnswer(true)}>{t('review.answer.correct')}</PrimaryButton>
+            <DangerButton onClick={() => onAnswer(false)}>{t('review.answer.wrong')}</DangerButton>
           </div>
         </>
       ) : (
         <div className="mt-2">
-          <PrimaryButton onClick={onReveal}>Lật đáp án</PrimaryButton>
+          <PrimaryButton onClick={onReveal}>{t('review.reveal')}</PrimaryButton>
         </div>
       )}
     </section>

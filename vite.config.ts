@@ -14,9 +14,10 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icon.svg', 'icon-maskable.svg'],
       manifest: {
-        name: 'Sổ học TOEIC',
-        short_name: 'Sổ TOEIC',
-        description: 'Ghi chú & theo dõi học TOEIC hằng ngày: buổi học, từ vựng, lỗi sai, điểm luyện đề.',
+        name: 'qqlearn',
+        short_name: 'qqlearn',
+        description:
+          'Sổ tay học tập đa môn: ghi chú, bấm giờ buổi học, từ vựng, lỗi sai, sổ điểm và thống kê hằng ngày.',
         lang: 'vi',
         start_url: '/',
         scope: '/',

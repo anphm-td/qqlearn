@@ -1,12 +1,18 @@
 /*
- * Sổ học TOEIC — domain types (LỚP CORE, thuần TypeScript).
+ * qqlearn — domain types (LỚP CORE, thuần TypeScript).
  *
  * ⚠️ Quy tắc lớp: src/core/ KHÔNG được import React, Dexie, window/document.
  *   Mọi entity của bảng dữ liệu người dùng đều có `id` tự sinh + `updatedAt`
  *   (epoch ms) để sau này đồng bộ/merge với server.
+ *
+ * Đa môn hoá: khung Part 1–7 của TOEIC đã bỏ — mọi bản ghi học gắn `subjectId`
+ * trỏ tới bảng subjects (môn học tự định nghĩa). `subjectId = 0` nghĩa là
+ * "chưa phân môn".
  */
 
 // ===== Settings (bảng singleton) =====
+
+import type { Lang } from './i18n/index'
 
 export interface PomodoroConfig {
   /** Phút tập trung — mặc định 25. */
@@ -23,9 +29,12 @@ export interface Settings {
   id: 1
   /** Mục tiêu hằng ngày (phút) — thời gian TỰ CHỈNH (design-system.md mục 3). */
   dailyGoalMinutes: number
-  /** Điểm mục tiêu TOEIC — vd. 700. */
+  /**
+   * Điểm mục tiêu — cột giữ lại để tương thích DB/bản sao lưu cũ, app không còn
+   * hiển thị (khung TOEIC đã bỏ; điểm ghi theo từng môn ở bảng scores).
+   */
   targetScore: number
-  /** Ngày thi, ISO 'YYYY-MM-DD' hoặc '' nếu chưa đặt. */
+  /** Cột giữ lại để tương thích, không hiển thị (trước đây là ngày thi TOEIC). */
   examDate: string
   /** Giờ nhắc học hằng ngày 'HH:mm' hoặc ''. */
   reminderTime: string
@@ -49,9 +58,39 @@ export interface Settings {
   syncMode: SyncMode
   /** Địa chỉ server PC khi syncMode = 'server' (vd. http://192.168.1.10:5178); '' = chưa đặt. */
   serverUrl: string
+  /**
+   * Ngôn ngữ giao diện — 'vi' MẶC ĐỊNH, 'en' tùy chọn trong Cài đặt
+   * (design-system.md mục 12). Đổi → áp dụng tức thì qua useT (publish/listen).
+   */
+  language: Lang
   /** Epoch ms lần sửa cuối — phục vụ đồng bộ server. */
   updatedAt: number
 }
+
+// ===== Subjects (môn học tự định nghĩa) =====
+
+/**
+ * Một môn học (bảng subjects). Màu lấy từ SUBJECT_PALETTE (src/core/subjects.ts —
+ * bộ pastel định sẵn của design-system.md mục 5). `goalMinutesPerDay = 0` nghĩa là
+ * môn không đặt mục tiêu riêng (dùng mục tiêu hằng ngày chung).
+ */
+export interface Subject {
+  id?: number
+  /** Tên môn — duy nhất, không rỗng (vd. "TOEIC", "Toán", "Tiếng Nhật"). */
+  name: string
+  /** Hex 6 ký tự từ SUBJECT_PALETTE (vd. '#FFD273'). */
+  colorHex: string
+  /** Mục tiêu phút/ngày riêng của môn; 0 = không đặt mục tiêu riêng. */
+  goalMinutesPerDay: number
+  /** Lưu trữ (ẩn khỏi các trang chọn môn nhưng giữ dữ liệu) thay vì xoá. */
+  archived: boolean
+  /** Epoch ms tạo. */
+  createdAt: number
+  /** Epoch ms lần sửa cuối. */
+  updatedAt: number
+}
+
+export type NewSubject = Omit<Subject, 'id' | 'createdAt' | 'updatedAt'>
 
 // ===== Sessions =====
 
@@ -65,9 +104,9 @@ export interface Session {
   endedAt: number | null
   /** Số phút đã học (làm tròn). */
   durationMin: number
-  /** Part 1–7 (0 = không rõ). */
-  part: number
-  /** Hoạt động: 'ngữ pháp' | 'từ vựng' | 'nghe' | 'đọc' | 'luyện đề' ... */
+  /** Môn học (id bảng subjects); 0 = chưa phân môn. */
+  subjectId: number
+  /** Hoạt động: 'nghe' | 'đọc' | 'ngữ pháp' | 'từ vựng' | 'luyện đề' ... */
   activity: string
   /** Nguồn tạo: timer (pomodoro) hoặc nhập tay. */
   source: 'timer' | 'manual'
@@ -85,7 +124,10 @@ export type NewSession = Omit<Session, 'id' | 'updatedAt'>
 export interface DailyNote {
   /** 'YYYY-MM-DD' local — PRIMARY KEY (1 bản ghi mỗi ngày). */
   date: string
-  /** Các Part đã học trong ngày. */
+  /**
+   * Các môn đã học trong ngày (id bảng subjects) — tên cột giữ nguyên từ thời
+   * Part để khỏi phải migrate DB; giá trị giờ là subjectId.
+   */
   partStudied: number[]
   /** Số từ mới ghi vào Sổ từ vựng hôm nay. */
   newWords: number
@@ -111,9 +153,9 @@ export interface Vocab {
   meaning: string
   /** Câu ví dụ. */
   example: string
-  /** Part liên quan 1–7 (0 = không rõ). */
-  part: number
-  /** Nguồn: đề nào (vd. "ETS 2023 · Đề 2") hoặc ''. */
+  /** Môn học (id bảng subjects); 0 = chưa phân môn. */
+  subjectId: number
+  /** Nguồn: sách/đề nào (vd. "ETS 2023 · Đề 2") hoặc ''. */
   sourceTest: string
   /** Epoch ms tạo. */
   createdAt: number
@@ -143,9 +185,10 @@ export interface SrsCard {
 
 export interface Mistake {
   id?: number
-  /** Số đề (0 = không rõ). */
+  /** Số đề/bài (0 = không rõ). */
   testNo: number
-  part: number
+  /** Môn học (id bảng subjects); 0 = chưa phân môn. */
+  subjectId: number
   questionNo: number
   myAnswer: string
   correctAnswer: string
@@ -165,16 +208,22 @@ export type NewMistake = Omit<Mistake, 'id' | 'createdAt' | 'updatedAt'>
 
 // ===== Scores =====
 
+/**
+ * Một điểm kiểm tra/đề (bảng scores) — MỘT số điểm duy nhất theo môn, không còn
+ * khung Listening/Reading của TOEIC.
+ */
 export interface Score {
   id?: number
-  /** Ngày làm đề 'YYYY-MM-DD' local. */
+  /** Ngày làm bài 'YYYY-MM-DD' local. */
   date: string
-  /** Nhãn đề — "ETS 2023 · Đề 2". */
-  testLabel: string
-  listening: number
-  reading: number
-  /** listening + reading (5–990). */
-  total: number
+  /** Môn học (id bảng subjects); 0 = chưa phân môn. */
+  subjectId: number
+  /** Nhãn bài kiểm tra — "Toán — Định lí Pytago", "ETS 2023 · Đề 2". */
+  label: string
+  /** Điểm (một số duy nhất — thang do từng môn tự quy ước). */
+  score: number
+  /** Ghi chú ngắn. */
+  note: string
   /** Epoch ms lần sửa cuối. */
   updatedAt: number
 }

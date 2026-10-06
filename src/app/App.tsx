@@ -14,6 +14,7 @@ import StatsPage from '@/features/stats/StatsPage'
 import WeekPage from '@/features/stats/WeekPage'
 import SessionPage from '@/features/study/SessionPage'
 import StudyPage from '@/features/study/StudyPage'
+import SubjectsPage from '@/features/subjects/SubjectsPage'
 import TodayPage from '@/features/today/TodayPage'
 
 /**
@@ -35,6 +36,7 @@ export function AppRoutes() {
         <Route path="/sotay/tu-vung" element={<VocabPage />} />
         <Route path="/sotay/tu-vung/on-tap" element={<VocabReviewPage />} />
         <Route path="/sotay/loi-sai" element={<MistakesPage />} />
+        <Route path="/mon-hoc" element={<SubjectsPage />} />
         <Route path="/thongke" element={<StatsPage />} />
         <Route path="/thongke/diem" element={<ScoresPage />} />
         <Route path="/thongke/tuan" element={<WeekPage />} />

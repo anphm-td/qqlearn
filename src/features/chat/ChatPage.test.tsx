@@ -18,7 +18,6 @@ vi.mock('@data', () => ({
 
 vi.mock('@/features/smart/ragClient', () => ({
   queryRag: vi.fn(),
-  RAG_NOT_CONNECTED_MESSAGE: 'Chưa kết nối máy trợ lý — nhập địa chỉ máy trợ lý trong Cài đặt',
 }))
 
 import { repos } from '@data'
@@ -45,6 +44,7 @@ function makeSettings(overrides: Partial<Settings> = {}): Settings {
     pomodoro: { focusMin: 25, breakMin: 5 },
     syncMode: 'local',
     serverUrl: '',
+    language: 'vi',
     updatedAt: 0,
     ...overrides,
   }

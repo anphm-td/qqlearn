@@ -19,23 +19,28 @@ const PAYLOAD: RestorePayload = {
     onboardingDone: true,
     pomodoro: { focusMin: 30, breakMin: 5 },
   },
+  // Id môn CŨ trong bản sao lưu (20/21) — restore phải ánh xạ sang id mới.
+  subjects: [
+    { id: 20, name: 'Toán', colorHex: '#BFAEE3', goalMinutesPerDay: 30, archived: false },
+    { id: 21, name: 'Tiếng Nhật', colorHex: '#FEC5E6', goalMinutesPerDay: 0, archived: false },
+  ],
   sessions: [
-    { date: '2026-10-01', startedAt: 1, endedAt: 2, durationMin: 25, part: 2, activity: 'nghe', source: 'timer', note: '' },
-    { date: '2026-10-02', startedAt: 3, endedAt: 4, durationMin: 45, part: 5, activity: 'đọc', source: 'manual', note: '' },
+    { date: '2026-10-01', startedAt: 1, endedAt: 2, durationMin: 25, subjectId: 20, activity: 'nghe', source: 'timer', note: '' },
+    { date: '2026-10-02', startedAt: 3, endedAt: 4, durationMin: 45, subjectId: 21, activity: 'đọc', source: 'manual', note: '' },
   ],
   vocab: [
-    { word: 'commute', meaning: 'đi làm', example: 'I commute.', part: 3, sourceTest: '' },
-    { word: 'deliberate', meaning: 'cố ý', example: 'a deliberate mistake', part: 5, sourceTest: '' },
+    { word: 'commute', meaning: 'đi làm', example: 'I commute.', subjectId: 21, sourceTest: '' },
+    { word: 'deliberate', meaning: 'cố ý', example: 'a deliberate mistake', subjectId: 20, sourceTest: '' },
   ],
   srsCards: [{ vocabKey: 1, box: 3, dueDate: '2026-10-05', lastReviewed: 1, correctCount: 4 }],
   mistakes: [
-    { testNo: 2, part: 3, questionNo: 14, myAnswer: 'A', correctAnswer: 'B', cause: 'từ vựng', explanation: '', reviewed: false },
+    { testNo: 2, subjectId: 21, questionNo: 14, myAnswer: 'A', correctAnswer: 'B', cause: 'từ vựng', explanation: '', reviewed: false },
   ],
-  scores: [{ date: '2026-10-01', testLabel: 'Đề thử', listening: 320, reading: 350, total: 670 }],
+  scores: [{ date: '2026-10-01', subjectId: 20, label: 'Toán — Định lí Pytago', score: 8, note: 'sai bài 4' }],
   dailyNotes: [
     {
       date: '2026-10-02',
-      partStudied: [3, 5],
+      partStudied: [20, 0],
       newWords: 2,
       mistakesSummary: '',
       reflection: 'Học ổn',
@@ -70,6 +75,7 @@ async function dbClearAll(): Promise<void> {
       onboardingDone: false,
       pomodoro: { focusMin: 25, breakMin: 5 },
     },
+    subjects: [],
     sessions: [],
     vocab: [],
     srsCards: [],
@@ -84,9 +90,9 @@ async function dbClearAll(): Promise<void> {
 describe('DexieRestoreRepo.restoreAll', () => {
   it('xoá sạch dữ liệu cũ rồi ghi payload; ánh xạ chỉ mục → id mới đúng', async () => {
     // Dữ liệu "bẩn": 3 buổi + 1 từ + thẻ
-    await repos.sessions.create({ date: '2026-09-30', startedAt: 0, endedAt: 1, durationMin: 10, part: 1, activity: 'nghe', source: 'manual', note: 'bẩn' })
-    await repos.sessions.create({ date: '2026-09-30', startedAt: 0, endedAt: 1, durationMin: 10, part: 1, activity: 'nghe', source: 'manual', note: 'bẩn 2' })
-    const dirtyVocab = await repos.vocab.create({ word: 'dirty', meaning: '', example: '', part: 0, sourceTest: '' })
+    await repos.sessions.create({ date: '2026-09-30', startedAt: 0, endedAt: 1, durationMin: 10, subjectId: 1, activity: 'nghe', source: 'manual', note: 'bẩn' })
+    await repos.sessions.create({ date: '2026-09-30', startedAt: 0, endedAt: 1, durationMin: 10, subjectId: 1, activity: 'nghe', source: 'manual', note: 'bẩn 2' })
+    const dirtyVocab = await repos.vocab.create({ word: 'dirty', meaning: '', example: '', subjectId: 0, sourceTest: '' })
     if (dirtyVocab.id != null) await repos.srs.createForVocab(dirtyVocab.id, '2026-10-01')
 
     await new DexieRestoreRepo().restoreAll(PAYLOAD)
@@ -127,6 +133,22 @@ describe('DexieRestoreRepo.restoreAll', () => {
     const settings = await repos.settings.get()
     expect(settings.dailyGoalMinutes).toBe(60)
     expect(settings.targetScore).toBe(800)
+
+    // Subjects: ghi lại từ payload với id MỚI; subjectId các hàng remap theo ánh xạ.
+    const subjects = await repos.subjects.list()
+    const toan = subjects.find((x) => x.name === 'Toán')!
+    const tiengNhat = subjects.find((x) => x.name === 'Tiếng Nhật')!
+    expect(toan).toBeDefined()
+    expect(tiengNhat).toBeDefined()
+    expect(toan.id).not.toBe(20) // id mới được sinh, không tái sử dụng id cũ
+    expect(toan.goalMinutesPerDay).toBe(30)
+    expect(sessions.find((x) => x.date === '2026-10-01')?.subjectId).toBe(toan.id)
+    expect(sessions.find((x) => x.date === '2026-10-02')?.subjectId).toBe(tiengNhat.id)
+    expect(vocab.find((x) => x.word === 'commute')?.subjectId).toBe(tiengNhat.id)
+    expect(vocab.find((x) => x.word === 'deliberate')?.subjectId).toBe(toan.id)
+    const scoreRows = await repos.scores.list()
+    expect(scoreRows[0].subjectId).toBe(toan.id)
+    expect(notes[0].partStudied).toEqual([toan.id, 0])
   })
 
   it('chạy lại 2 lần → không nhân đôi', async () => {

@@ -1,10 +1,14 @@
 /*
  * Handlers: restore — khôi phục TOÀN BỘ bản sao lưu trong MỘT transaction.
  *
- * Thứ tự: xoá sạch 8 bảng dữ liệu → ghi lại payload (settings giữ nguyên
- * syncMode/serverUrl của máy). Lỗi bất kỳ giữa chừng → ROLLBACK: dữ liệu quay về
- * đúng trạng thái trước khi gọi, không bao giờ một phần. Chạy lại cho cùng kết
- * quả (clear-trước-ghi) nên không bao giờ nhân đôi dữ liệu.
+ * Thứ tự: xoá sạch các bảng dữ liệu (gồm subjects) → ghi lại payload (settings
+ * giữ nguyên syncMode/serverUrl/checkinEnabled của máy). Lỗi bất kỳ giữa chừng →
+ * ROLLBACK: dữ liệu quay về đúng trạng thái trước khi gọi, không bao giờ một
+ * phần. Chạy lại cho cùng kết quả (clear-trước-ghi) nên không bao giờ nhân đôi.
+ *
+ * Môn học: subjects được ghi lại từ payload; id CŨ trong bản sao lưu được ÁNH XẠ
+ * sang id mới (pattern refKey của ảnh) rồi remap subject_id của sessions/vocab/
+ * mistakes/scores và partStudied của dailyNotes — môn không có trong payload → 0.
  */
 import { Buffer } from 'node:buffer'
 import type { DatabaseSync } from 'node:sqlite'
@@ -15,6 +19,7 @@ import { parseBody } from '../validate.js'
 import { getSettings } from './settings.js'
 
 const DATA_TABLES = [
+  'subjects',
   'sessions',
   'dailyNotes',
   'vocab',
@@ -35,12 +40,13 @@ export function restoreAll(db: DatabaseSync, body: unknown): { ok: true } {
       db.prepare(`DELETE FROM ${table}`).run()
     }
 
-    // Settings: ghi các trường của payload, GIỮ nguyên syncMode/serverUrl hiện có
-    // (getSettings tự tạo hàng mặc định nếu chưa có; cột syncMode/serverUrl không bị UPDATE đụng tới).
+    // Settings: ghi các trường của payload (gồm language — ngôn ngữ đi theo bản sao
+    // lưu), GIỮ nguyên syncMode/serverUrl/checkinEnabled hiện có (getSettings tự tạo
+    // hàng mặc định nếu chưa có; các cột đó không bị UPDATE đụng tới).
     getSettings(db)
     db.prepare(
       `UPDATE settings SET dailyGoalMinutes = ?, targetScore = ?, examDate = ?, reminderTime = ?,
-         ragBaseUrl = ?, onboardingDone = ?, pomodoro = ?, updatedAt = ?
+         ragBaseUrl = ?, onboardingDone = ?, pomodoro = ?, language = ?, updatedAt = ?
        WHERE id = 1`,
     ).run(
       payload.settings.dailyGoalMinutes,
@@ -50,18 +56,33 @@ export function restoreAll(db: DatabaseSync, body: unknown): { ok: true } {
       payload.settings.ragBaseUrl,
       payload.settings.onboardingDone ? 1 : 0,
       JSON.stringify(payload.settings.pomodoro),
+      payload.settings.language,
       now,
     )
+
+    // Subjects: ghi lại payload + ÁNH XẠ id cũ → id mới (pattern refKey của ảnh).
+    const subjectIdMap = new Map<number, number>()
+    for (const s of payload.subjects) {
+      const info = db
+        .prepare(
+          `INSERT INTO subjects (name, colorHex, goalMinutesPerDay, archived, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+        )
+        .run(s.name, s.colorHex, s.goalMinutesPerDay, s.archived ? 1 : 0, now, now)
+      subjectIdMap.set(s.id, Number(info.lastInsertRowid))
+    }
+    /** Id cũ → id mới; môn không có trong payload → 0 (chưa phân môn). */
+    const remapSubject = (oldId: number): number => subjectIdMap.get(oldId) ?? 0
 
     // Sessions + ánh xạ chỉ mục → id mới (ảnh 'session' tham chiếu theo chỉ mục).
     const sessionIds: number[] = []
     for (const s of payload.sessions) {
       const info = db
         .prepare(
-          `INSERT INTO sessions (date, startedAt, endedAt, durationMin, part, activity, source, note, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO sessions (date, startedAt, endedAt, durationMin, subject_id, part, activity, source, note, updatedAt)
+           VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)`,
         )
-        .run(s.date, s.startedAt, s.endedAt, s.durationMin, s.part, s.activity, s.source, s.note, now)
+        .run(s.date, s.startedAt, s.endedAt, s.durationMin, remapSubject(s.subjectId), s.activity, s.source, s.note, now)
       sessionIds.push(Number(info.lastInsertRowid))
     }
 
@@ -70,10 +91,10 @@ export function restoreAll(db: DatabaseSync, body: unknown): { ok: true } {
     for (const v of payload.vocab) {
       const info = db
         .prepare(
-          `INSERT INTO vocab (word, meaning, example, part, sourceTest, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO vocab (word, meaning, example, subject_id, part, sourceTest, createdAt, updatedAt)
+           VALUES (?, ?, ?, ?, 0, ?, ?, ?)`,
         )
-        .run(v.word, v.meaning, v.example, v.part, v.sourceTest, now, now)
+        .run(v.word, v.meaning, v.example, remapSubject(v.subjectId), v.sourceTest, now, now)
       vocabIds.push(Number(info.lastInsertRowid))
     }
 
@@ -90,21 +111,24 @@ export function restoreAll(db: DatabaseSync, body: unknown): { ok: true } {
     for (const m of payload.mistakes) {
       const info = db
         .prepare(
-          `INSERT INTO mistakes (testNo, part, questionNo, myAnswer, correctAnswer, cause, explanation, reviewed, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO mistakes (testNo, subject_id, part, questionNo, myAnswer, correctAnswer, cause, explanation, reviewed, createdAt, updatedAt)
+           VALUES (?, ?, 0, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
-        .run(m.testNo, m.part, m.questionNo, m.myAnswer, m.correctAnswer, m.cause, m.explanation, m.reviewed ? 1 : 0, now, now)
+        .run(m.testNo, remapSubject(m.subjectId), m.questionNo, m.myAnswer, m.correctAnswer, m.cause, m.explanation, m.reviewed ? 1 : 0, now, now)
       mistakeIds.push(Number(info.lastInsertRowid))
     }
 
     for (const s of payload.scores) {
+      const newSubjectId = remapSubject(s.subjectId)
       db.prepare(
-        `INSERT INTO scores (date, testLabel, listening, reading, total, updatedAt)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      ).run(s.date, s.testLabel, s.listening, s.reading, s.total, now)
+        `INSERT INTO scores (date, subject_id, label, score, note, testLabel, listening, reading, total, updatedAt)
+         VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?)`,
+      ).run(s.date, newSubjectId, s.label, s.score, s.note, s.label, s.score, now)
     }
 
     for (const n of payload.dailyNotes) {
+      // partStudied giờ là subjectId — remap theo ánh xạ (0 giữ nguyên).
+      const mappedStudied = JSON.stringify(n.partStudied.map(remapSubject))
       db.prepare(
         `INSERT INTO dailyNotes (date, partStudied, newWords, mistakesSummary, reflection, photoIds, autoDrafted, updatedAt)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
@@ -114,7 +138,7 @@ export function restoreAll(db: DatabaseSync, body: unknown): { ok: true } {
            photoIds = excluded.photoIds, autoDrafted = excluded.autoDrafted, updatedAt = excluded.updatedAt`,
       ).run(
         n.date,
-        JSON.stringify(n.partStudied),
+        mappedStudied,
         n.newWords,
         n.mistakesSummary,
         n.reflection,

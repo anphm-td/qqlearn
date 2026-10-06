@@ -1,19 +1,23 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import SubjectChip from '@/components/ui/SubjectChip'
 import Icon from '@/components/ui/Icon'
 import { PrimaryButton, SecondaryButton } from '@/components/ui/buttons'
-import DurationPicker, { OptionPill } from '@/features/today/DurationPicker'
-import { clampInt, daysUntil, formatDayShort } from '@/features/today/todayLogic'
-import { todayISO } from '@data'
+import DurationPicker from '@/features/today/DurationPicker'
+import { clampInt } from '@/features/today/todayLogic'
+import { nextSubjectColor } from '@/features/subjects/subjectView'
+import { repos } from '@data'
+import { useSubjects } from '@data/useSubjects'
 import { useSettings } from '@data/useSettings'
 import { cn } from '@/components/ui/cn'
 
 /*
  * Onboarding (A1) — màn lần đầu chạy app, NẰM NGOÀI AppLayout (không TabBar/Sidebar).
- * 3 bước theo mẫu design 04: mục tiêu hằng ngày (thời gian TỰ CHỈNH mục 3) →
- * điểm mục tiêu → ngày thi. Lưu qua useSettings().updateSettings({ ..., onboardingDone: true })
- * rồi điều hướng về '/'. ≥768px: cột giữa hẹp 480px căn giữa (mục 10).
+ * 2 bước: mục tiêu hằng ngày (thời gian TỰ CHỈNH mục 3) → chọn/tạo môn đang học
+ * (đa môn — khung "điểm mục tiêu 700 + ngày thi TOEIC" cũ đã bỏ). Lưu qua
+ * useSettings().updateSettings({ ..., onboardingDone: true }) rồi điều hướng về '/'.
+ * ≥768px: cột giữa hẹp 480px căn giữa (mục 10).
  */
 
 const GOAL_PRESETS = [
@@ -23,31 +27,57 @@ const GOAL_PRESETS = [
   { minutes: 120, caption: 'tiến bộ' },
 ] as const
 
-const SCORE_PRESETS = [550, 650, 700, 800] as const
-
-const STEP_TITLES = ['mục tiêu ngày', 'điểm mục tiêu', 'ngày thi'] as const
+const STEP_TITLES = ['mục tiêu ngày', 'môn đang học'] as const
 
 export default function OnboardingPage() {
   const navigate = useNavigate()
   const { settings, updateSettings, loading } = useSettings()
+  const { subjects, reload } = useSubjects()
 
   const [step, setStep] = useState(0)
   const [goalMinutes, setGoalMinutes] = useState(90)
-  const [targetScore, setTargetScore] = useState(700)
-  const [examDate, setExamDate] = useState('')
+  const [selectedIds, setSelectedIds] = useState<number[]>([])
+  const [newSubjectName, setNewSubjectName] = useState('')
+  const [creating, setCreating] = useState(false)
+  const [createError, setCreateError] = useState('')
   const [hydrated, setHydrated] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+
+  const activeSubjects = (subjects ?? []).filter((s) => !s.archived)
 
   // Lấy giá trị đã lưu (lần chỉnh sau) một lần khi settings tải xong.
   useEffect(() => {
     if (!hydrated && settings) {
       setGoalMinutes(settings.dailyGoalMinutes)
-      setTargetScore(settings.targetScore)
-      setExamDate(settings.examDate)
       setHydrated(true)
     }
   }, [settings, hydrated])
+
+  const toggleSubject = (id: number) => {
+    setSelectedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))
+  }
+
+  const createSubject = async () => {
+    const name = newSubjectName.trim()
+    if (!name || creating) return
+    setCreating(true)
+    setCreateError('')
+    try {
+      await repos.subjects.create({
+        name,
+        colorHex: nextSubjectColor(subjects ?? []),
+        goalMinutesPerDay: 0,
+        archived: false,
+      })
+      setNewSubjectName('')
+      await reload()
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Không tạo được môn — thử lại nhé.')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const finish = async () => {
     setSaving(true)
@@ -55,8 +85,6 @@ export default function OnboardingPage() {
     try {
       await updateSettings({
         dailyGoalMinutes: clampInt(goalMinutes, 5, 1440, 90),
-        targetScore: clampInt(targetScore, 10, 990, 700),
-        examDate,
         onboardingDone: true,
       })
       navigate('/', { replace: true })
@@ -65,8 +93,6 @@ export default function OnboardingPage() {
       setSaving(false)
     }
   }
-
-  const remainDays = examDate ? daysUntil(todayISO(), examDate) : null
 
   return (
     <div className="flex min-h-dvh flex-col items-center bg-bg px-4 py-8">
@@ -85,7 +111,7 @@ export default function OnboardingPage() {
             <span className="h-9 w-9" />
           )}
 
-          <div className="flex gap-2.5" aria-label={`Bước ${step + 1}/3: ${STEP_TITLES[step]}`}>
+          <div className="flex gap-2.5" aria-label={`Bước ${step + 1}/2: ${STEP_TITLES[step]}`}>
             {STEP_TITLES.map((t, i) => (
               <span
                 key={t}
@@ -103,15 +129,14 @@ export default function OnboardingPage() {
         <main className="mt-8 flex flex-1 flex-col gap-6">
           <div>
             <p className="section-label">
-              bước {step + 1}/3: {STEP_TITLES[step]}
+              bước {step + 1}/2: {STEP_TITLES[step]}
             </p>
             {step === 0 && (
               <h1 className="type-display mt-2">
                 Bạn muốn học <span className="bg-butter px-1">bao nhiêu</span> mỗi ngày?
               </h1>
             )}
-            {step === 1 && <h1 className="type-display mt-2">Điểm TOEIC bạn nhắm tới?</h1>}
-            {step === 2 && <h1 className="type-display mt-2">Khi nào ngày thi?</h1>}
+            {step === 1 && <h1 className="type-display mt-2">Bạn đang học môn nào?</h1>}
           </div>
 
           {step === 0 && (
@@ -151,48 +176,47 @@ export default function OnboardingPage() {
           )}
 
           {step === 1 && (
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-wrap justify-center gap-2">
-                {SCORE_PRESETS.map((p) => (
-                  <OptionPill key={p} selected={targetScore === p} onClick={() => setTargetScore(p)} ariaLabel={`Đặt ${p} điểm`}>
-                    {p} điểm
-                  </OptionPill>
-                ))}
+            <div className="flex flex-col gap-5">
+              <div className="paper-card flex flex-col gap-3 px-4 py-4">
+                <div className="flex flex-wrap gap-2">
+                  {activeSubjects.map((s) => (
+                    <SubjectChip
+                      key={s.id}
+                      name={s.name}
+                      colorHex={s.colorHex}
+                      active={selectedIds.includes(s.id!)}
+                      onClick={() => toggleSubject(s.id!)}
+                    />
+                  ))}
+                </div>
+                <p className="type-caption text-muted">
+                  Chọn nhiều môn nếu bạn học song song — có thể thêm/bỏ bất cứ lúc nào
+                  trong trang Môn học.
+                </p>
+                <div className="flex items-center gap-2 border-t border-dashed border-rule pt-3">
+                  <input
+                    className="w-full rounded-[8px] border border-rule bg-bg px-3 py-2 text-[15px] text-ink outline-none focus:border-teal"
+                    placeholder="hoặc tạo môn mới — vd. Vật lí"
+                    aria-label="Tên môn mới"
+                    value={newSubjectName}
+                    onChange={(e) => setNewSubjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault()
+                        void createSubject()
+                      }
+                    }}
+                  />
+                  <SecondaryButton className="shrink-0 px-3 py-2" onClick={() => void createSubject()} disabled={creating}>
+                    <Icon name="plus" size={16} /> {creating ? 'Đang tạo…' : 'Tạo môn'}
+                  </SecondaryButton>
+                </div>
+                {createError && (
+                  <p className="type-caption text-coral" role="alert">
+                    {createError}
+                  </p>
+                )}
               </div>
-              <DurationPicker
-                value={targetScore}
-                onChange={setTargetScore}
-                presets={[]}
-                min={10}
-                max={990}
-                step={10}
-                unit="điểm"
-                label="nhập điểm khác"
-                className="paper-card px-4 py-6"
-              />
-            </div>
-          )}
-
-          {step === 2 && (
-            <div className="paper-card flex flex-col gap-3 px-4 py-6">
-              <label htmlFor="onboarding-exam-date" className="type-body font-medium">
-                Ngày thi dự kiến
-              </label>
-              <input
-                id="onboarding-exam-date"
-                type="date"
-                className="num w-full rounded-[8px] border border-rule bg-card px-3 py-2 text-[15px] text-ink outline-none focus:border-teal"
-                value={examDate}
-                onChange={(e) => setExamDate(e.target.value)}
-              />
-              <SecondaryButton onClick={() => setExamDate('')}>Chưa biết ngày thi</SecondaryButton>
-              <p className="num type-caption text-muted">
-                {remainDays === null
-                  ? 'Đặt ngày thi để xem tiến độ mỗi ngày.'
-                  : remainDays >= 0
-                    ? `Còn ${remainDays} ngày từ ${formatDayShort(todayISO())}.`
-                    : 'Ngày thi đã qua — chọn ngày khác nhé.'}
-              </p>
             </div>
           )}
 
@@ -202,7 +226,7 @@ export default function OnboardingPage() {
                 {error}
               </p>
             )}
-            {step < 2 ? (
+            {step < 1 ? (
               <PrimaryButton className="w-full" onClick={() => setStep((s) => s + 1)}>
                 Tiếp tục
               </PrimaryButton>

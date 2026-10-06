@@ -15,7 +15,7 @@ const STATE = {
   phase: 'running' as const,
   timer: { running: true, startedAt: 1_759_500_000_000, accumulatedMs: 300_000 },
   targetMin: 25,
-  part: 5,
+  subjectId: 2,
   activity: 'ngữ pháp',
   breakEndsAt: null,
   sessionStartAt: 1_759_498_200_000,

@@ -16,6 +16,7 @@ import {
   scoreResponseSchema,
   sessionResponseSchema,
   srsResponseSchema,
+  subjectResponseSchema,
   vocabResponseSchema,
   type ChatData,
   type MistakeData,
@@ -25,6 +26,7 @@ import {
   type SessionData,
   type SettingsData,
   type SrsData,
+  type SubjectData,
   type VocabData,
 } from './schemas.js'
 
@@ -42,6 +44,7 @@ export interface SettingsRow {
   pomodoro: string
   syncMode: string
   serverUrl: string
+  language: string
   updatedAt: number
 }
 
@@ -63,6 +66,33 @@ export function settingsRowToJs(row: SettingsRow): SettingsData {
     pomodoro: JSON.parse(String(row.pomodoro)) as SettingsData['pomodoro'],
     syncMode: String(row.syncMode) === 'server' ? 'server' : 'local',
     serverUrl: String(row.serverUrl),
+    // `?? 'vi'`: hàng đọc từ DB chưa chạy migration (thiếu cột) coi như tiếng Việt.
+    language: String(row.language ?? 'vi') === 'en' ? 'en' : 'vi',
+    updatedAt: Number(row.updatedAt),
+  }
+}
+
+// ===== Subjects =====
+
+export interface SubjectRow {
+  id: number
+  name: string
+  colorHex: string
+  goalMinutesPerDay: number
+  archived: number
+  createdAt: number
+  updatedAt: number
+}
+
+export function subjectRowToJs(row: SubjectRow): SubjectData {
+  return {
+    id: Number(row.id),
+    name: String(row.name),
+    // hex đọc từ DB được ép về union của SUBJECT_PALETTE (kết quả validate ở schema).
+    colorHex: String(row.colorHex) as SubjectData['colorHex'],
+    goalMinutesPerDay: Number(row.goalMinutesPerDay),
+    archived: Number(row.archived) !== 0,
+    createdAt: Number(row.createdAt),
     updatedAt: Number(row.updatedAt),
   }
 }
@@ -75,6 +105,8 @@ export interface SessionRow {
   startedAt: number
   endedAt: number | null
   durationMin: number
+  /** `?? 0`: hàng đọc từ DB chưa chạy migration (thiếu cột) coi như chưa phân môn. */
+  subject_id: number
   part: number
   activity: string
   source: string
@@ -89,7 +121,7 @@ export function sessionRowToJs(row: SessionRow): SessionData {
     startedAt: Number(row.startedAt),
     endedAt: row.endedAt === null ? null : Number(row.endedAt),
     durationMin: Number(row.durationMin),
-    part: Number(row.part),
+    subjectId: Number(row.subject_id ?? 0),
     activity: String(row.activity),
     source: String(row.source) === 'timer' ? 'timer' : 'manual',
     note: String(row.note),
@@ -130,6 +162,7 @@ export interface VocabRow {
   word: string
   meaning: string
   example: string
+  subject_id: number
   part: number
   sourceTest: string
   createdAt: number
@@ -142,7 +175,7 @@ export function vocabRowToJs(row: VocabRow): VocabData {
     word: String(row.word),
     meaning: String(row.meaning),
     example: String(row.example),
-    part: Number(row.part),
+    subjectId: Number(row.subject_id ?? 0),
     sourceTest: String(row.sourceTest),
     createdAt: Number(row.createdAt),
     updatedAt: Number(row.updatedAt),
@@ -178,6 +211,7 @@ export function srsRowToJs(row: SrsRow): SrsData {
 export interface MistakeRow {
   id: number
   testNo: number
+  subject_id: number
   part: number
   questionNo: number
   myAnswer: string
@@ -193,7 +227,7 @@ export function mistakeRowToJs(row: MistakeRow): MistakeData {
   return {
     id: Number(row.id),
     testNo: Number(row.testNo),
-    part: Number(row.part),
+    subjectId: Number(row.subject_id ?? 0),
     questionNo: Number(row.questionNo),
     myAnswer: String(row.myAnswer),
     correctAnswer: String(row.correctAnswer),
@@ -210,6 +244,11 @@ export function mistakeRowToJs(row: MistakeRow): MistakeData {
 export interface ScoreRow {
   id: number
   date: string
+  subject_id: number
+  label: string
+  score: number
+  note: string
+  // Cột legacy của khung TOEIC cũ — chỉ dùng khi DB chưa chạy migration.
   testLabel: string
   listening: number
   reading: number
@@ -221,10 +260,11 @@ export function scoreRowToJs(row: ScoreRow): ScoreData {
   return {
     id: Number(row.id),
     date: String(row.date),
-    testLabel: String(row.testLabel),
-    listening: Number(row.listening),
-    reading: Number(row.reading),
-    total: Number(row.total),
+    subjectId: Number(row.subject_id ?? 0),
+    // `?? legacy`: cột mới thiếu (DB chưa migration) thì đọc từ cột cũ.
+    label: row.label !== undefined && row.label !== null ? String(row.label) : String(row.testLabel ?? ''),
+    score: row.score !== undefined && row.score !== null ? Number(row.score) : Number(row.total ?? 0),
+    note: String(row.note ?? ''),
     updatedAt: Number(row.updatedAt),
   }
 }
@@ -277,6 +317,7 @@ export function chatRowToJs(row: ChatRow): ChatData {
 
 // ===== Mảng response — validate cả danh sách 1 lần trước khi gửi =====
 
+export const subjectListSchema = z.array(subjectResponseSchema)
 export const sessionListSchema = z.array(sessionResponseSchema)
 export const noteListSchema = z.array(dailyNoteSchema)
 export const vocabListSchema = z.array(vocabResponseSchema)

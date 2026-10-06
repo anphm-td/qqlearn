@@ -8,6 +8,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { dailyNoteSchema } from '@core/schemas'
 import type { DailyNote, Photo } from '@core/types'
 import { repos } from '@data/index'
+import { useT } from '@data/useT'
 
 import { appendPhotoId, emptyNote, photoAttachError, removePhotoId } from './notePhotos'
 
@@ -29,6 +30,7 @@ export interface UseNotePhotosResult {
  * `date = ''` → trạng thái rỗng (chưa chọn ghi chú nào).
  */
 export function useNotePhotos(date: string): UseNotePhotosResult {
+  const { t, lang } = useT('notebook')
   const [photos, setPhotos] = useState<Photo[]>([])
   const [urls, setUrls] = useState<Record<number, string>>({})
   const [error, setError] = useState('')
@@ -58,9 +60,9 @@ export function useNotePhotos(date: string): UseNotePhotosResult {
       // Ghi chú/ảnh không đọc được (server PC ngắt, IndexedDB lỗi) — hiện thông
       // báo qua error thay vì treo gallery, tránh unhandled rejection.
       setPhotos([])
-      setError('Chưa đọc được ảnh của ghi chú này — thử tải lại trang nhé.')
+      setError(t('photo.loadError'))
     }
-  }, [date])
+  }, [date, t])
 
   useEffect(() => {
     void load()
@@ -81,19 +83,19 @@ export function useNotePhotos(date: string): UseNotePhotosResult {
   const saveNote = useCallback(async (next: DailyNote) => {
     const parsed = dailyNoteSchema.safeParse(next)
     if (!parsed.success) {
-      setError('Không ghi được vào sổ — dữ liệu ghi chú thiếu trường.')
+      setError(t('photo.noteSaveError'))
       return false
     }
     await repos.notes.upsert(parsed.data)
     return true
-  }, [])
+  }, [t])
 
   /** Chọn 1 ảnh (từ file input) → lưu Blob → gắn id vào dailyNotes.photoIds. */
   const addPhoto = useCallback(
     async (file: File) => {
       if (!date) return
       setError('')
-      const invalid = photoAttachError(file.type, file.size)
+      const invalid = photoAttachError(file.type, file.size, lang)
       if (invalid) {
         setError(invalid)
         return
@@ -107,19 +109,19 @@ export function useNotePhotos(date: string): UseNotePhotosResult {
           refId: date,
         })
         if (saved.id == null) {
-          setError('Không lưu được ảnh — thử lại nhé.')
+          setError(t('photo.saveError'))
           return
         }
         const note = (await repos.notes.get(date)) ?? emptyNote(date)
         const ok = await saveNote(appendPhotoId(note, saved.id))
         if (ok) await load()
       } catch {
-        setError('Không lưu được ảnh — thử lại nhé.')
+        setError(t('photo.saveError'))
       } finally {
         setBusy(false)
       }
     },
-    [date, load, saveNote],
+    [date, lang, load, saveNote, t],
   )
 
   /** Gỡ ảnh: xoá hàng photos + bỏ id khỏi dailyNotes.photoIds. */
@@ -133,10 +135,10 @@ export function useNotePhotos(date: string): UseNotePhotosResult {
         const ok = await saveNote(removePhotoId(note, photoId))
         if (ok) await load()
       } catch {
-        setError('Không gỡ được ảnh — thử lại nhé.')
+        setError(t('photo.removeError'))
       }
     },
-    [date, load, saveNote],
+    [date, load, saveNote, t],
   )
 
   return { photos, urls, error, busy, addPhoto, removePhoto }

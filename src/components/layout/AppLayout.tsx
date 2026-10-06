@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 
 import { useSettings } from '@data/useSettings'
+import { useT } from '@data/useT'
+
 import Sidebar from '@/components/layout/Sidebar'
 import TabBar from '@/components/ui/TabBar'
 import CheckinPrompt from '@/features/today/CheckinPrompt'
@@ -22,10 +24,14 @@ import {
  * (trang Cài đặt chỉ quản quyền thông báo qua useNotificationPermission).
  * Check-in "Hỏi giờ học khi mở app" cũng mount MỘT LẦN tại đây — card nổi tự đóng
  * khi điều hướng, không chặn UI.
+ *
+ * i18n: document.title theo ngôn ngữ đã chọn (useT('common') — key 'appTitle'),
+ * đổi ngôn ngữ trong Cài đặt áp dụng ngay nhờ publish/listen của useSettings.
  */
 export default function AppLayout() {
   const { pathname } = useLocation()
   const { settings } = useSettings()
+  const { t } = useT('common')
   const [noteTime, setNoteTime] = useState<string>(() => loadNoteReminderTime())
   const { banner, dismissBanner } = useReminders(settings?.reminderTime ?? '', noteTime)
 
@@ -34,6 +40,11 @@ export default function AppLayout() {
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [pathname])
+
+  // Tiêu đề tab trình duyệt theo ngôn ngữ (key 'appTitle' — namespace common).
+  useEffect(() => {
+    document.title = t('appTitle')
+  }, [t])
 
   // Đổi giờ nhắc ghi chú ở Cài đặt → lên lịch lại ngay.
   useEffect(() => {
@@ -58,7 +69,7 @@ export default function AppLayout() {
               <p className="type-body font-semibold">{banner.title}</p>
               <p className="type-caption mt-0.5">{banner.body}</p>
               <button type="button" className="type-caption mt-1 underline" onClick={dismissBanner}>
-                Đã hiểu
+                {t('banner.dismiss')}
               </button>
             </div>
           )}

@@ -16,20 +16,27 @@ import {
   mistakeInputSchema,
   photoInputSchema,
   scoreInputSchema,
+  scoreRecordSchema,
   sessionInputSchema,
   settingsSchema,
   srsCardSchema,
+  subjectInputSchema,
   vocabInputSchema,
 } from '../../src/core/schemas.js'
 
 // ===== Request — body/query gửi LÊN server =====
 
+/** Body POST /api/subjects — đúng NewSubject. */
+export const subjectCreateSchema = subjectInputSchema
+/** Body PUT /api/subjects/:id — bỏ trường không truyền. */
+export const subjectPatchSchema = subjectInputSchema.partial()
+
 /**
  * PATCH /api/settings — ghi một phần settings (không cho sửa id/updatedAt).
  *
- * syncMode/serverUrl/checkinEnabled phải ĐÈ BẰNG bản .optional() không .default():
- * trong Zod v4, .partial() KHÔNG tắt default — key vắng mặt vẫn bung giá trị default
- * khi parse (safeParse({}) → {syncMode:'local', serverUrl:'', checkinEnabled:true}),
+ * syncMode/serverUrl/checkinEnabled/language phải ĐÈ BẰNG bản .optional() không
+ * .default(): trong Zod v4, .partial() KHÔNG tắt default — key vắng mặt vẫn bung
+ * giá trị default khi parse (safeParse({}) → {syncMode:'local', serverUrl:'', …}),
  * khiến MỌI patch một phần (vd. chỉ đổi dailyGoalMinutes từ Cài đặt) ghi đè lựa chọn
  * đã lưu trên server. Bản .optional() thuần: key vắng mặt → không có trong output →
  * handler giữ nguyên giá trị cũ của hàng settings.
@@ -40,6 +47,7 @@ export const settingsPatchSchema = settingsSchema
     syncMode: z.enum(['local', 'server']).optional(),
     serverUrl: z.string().optional(),
     checkinEnabled: z.boolean().optional(),
+    language: z.enum(['vi', 'en']).optional(),
   })
   .partial()
 
@@ -72,8 +80,8 @@ export const mistakeCreateSchema = mistakeInputSchema
 export const mistakePatchSchema = mistakeInputSchema.partial()
 export const mistakeReviewedSchema = z.object({ reviewed: z.boolean() })
 
+/** Body POST /api/scores — nhãn bắt buộc (input form). */
 export const scoreCreateSchema = scoreInputSchema
-
 /** Body POST /api/photos — ảnh truyền base64 trong JSON (server lưu BLOB). */
 export const photoCreateSchema = photoInputSchema.extend({ dataBase64: z.string().min(1) })
 export const photoListQuerySchema = z.object({
@@ -92,7 +100,8 @@ export const chatSessionParamSchema = z.string().min(1)
  * Body POST /api/restore — khôi phục TOÀN BỘ bản sao lưu trong MỘT transaction
  * (xoá sạch rồi ghi; lỗi giữa chừng → ROLLBACK). Thẻ SRS tham chiếu từ vựng theo
  * CHỈ MỤC trong mảng vocab; ảnh tham chiếu theo chỉ mục (session/mistake) hoặc
- * ngày (note) — id bản sao lưu không có ý nghĩa sau khi ghi lại.
+ * ngày (note) — id bản sao lưu không có ý nghĩa sau khi ghi lại. Môn học giữ id
+ * CŨ trong payload để handler ánh xạ id cũ → mới rồi remap subjectId các hàng.
  */
 export const restoreCardSchema = z.object({
   vocabKey: z.number().int().min(0),
@@ -101,6 +110,9 @@ export const restoreCardSchema = z.object({
   lastReviewed: z.number().nullable(),
   correctCount: z.number().int().min(0),
 })
+
+/** Môn trong payload khôi phục — id CŨ (để ánh xạ), không cần createdAt/updatedAt. */
+export const restoreSubjectSchema = subjectInputSchema.extend({ id: z.number() })
 
 export const restorePhotoSchema = z.object({
   refType: z.enum(['session', 'note', 'mistake']),
@@ -117,14 +129,22 @@ export const restoreChatSchema = z.object({
 })
 
 export const restorePayloadSchema = z.object({
-  // syncMode/serverUrl CỐ Ý không nằm trong payload — nguồn dữ liệu là lựa chọn
-  // của máy này, khôi phục không được đổi nó.
-  settings: settingsSchema.omit({ id: true, updatedAt: true, syncMode: true, serverUrl: true }),
+  // syncMode/serverUrl/checkinEnabled CỐ Ý không nằm trong payload — nguồn dữ liệu
+  // và các lựa chọn của máy này, khôi phục không được đổi chúng.
+  settings: settingsSchema.omit({
+    id: true,
+    updatedAt: true,
+    syncMode: true,
+    serverUrl: true,
+    checkinEnabled: true,
+  }),
+  subjects: z.array(restoreSubjectSchema),
   sessions: z.array(sessionInputSchema),
   vocab: z.array(vocabInputSchema),
   srsCards: z.array(restoreCardSchema),
   mistakes: z.array(mistakeInputSchema),
-  scores: z.array(scoreInputSchema),
+  // scoreRecordSchema (label cho phép rỗng) — bản sao lưu legacy có thể có nhãn rỗng.
+  scores: z.array(scoreRecordSchema),
   dailyNotes: z.array(dailyNoteSchema),
   chat: z.array(restoreChatSchema),
   photos: z.array(restorePhotoSchema),
@@ -132,6 +152,11 @@ export const restorePayloadSchema = z.object({
 
 // ===== Response — JSON server TRẢ VỀ (validate trước khi gửi) =====
 
+export const subjectResponseSchema = subjectInputSchema.extend({
+  id: z.number(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+})
 export const sessionResponseSchema = sessionInputSchema.extend({
   id: z.number(),
   updatedAt: z.number(),
@@ -147,7 +172,8 @@ export const mistakeResponseSchema = mistakeInputSchema.extend({
   createdAt: z.number(),
   updatedAt: z.number(),
 })
-export const scoreResponseSchema = scoreInputSchema.extend({ id: z.number(), updatedAt: z.number() })
+// Response dùng scoreRecordSchema — label có thể rỗng với dữ liệu legacy (MEDIUM 5).
+export const scoreResponseSchema = scoreRecordSchema.extend({ id: z.number(), updatedAt: z.number() })
 /** Ảnh đi qua JSON: blob hoá base64 (client ở app đổi ngược thành Blob). */
 export const photoResponseSchema = z.object({
   id: z.number(),
@@ -172,15 +198,18 @@ export {
   mistakeInputSchema,
   photoInputSchema,
   scoreInputSchema,
+  scoreRecordSchema,
   sessionInputSchema,
   settingsSchema,
   srsCardSchema,
+  subjectInputSchema,
   vocabInputSchema,
 } from '../../src/core/schemas.js'
 
 // ===== Kiểu dữ liệu các handler trả về (khớp entity của @core/types) =====
 
 export type SettingsData = z.infer<typeof settingsSchema>
+export type SubjectData = z.infer<typeof subjectResponseSchema>
 export type SessionData = z.infer<typeof sessionResponseSchema>
 export type NoteData = z.infer<typeof dailyNoteSchema>
 export type VocabData = z.infer<typeof vocabResponseSchema>

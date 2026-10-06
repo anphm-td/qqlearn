@@ -9,6 +9,8 @@
  *  - Logic thuần: ./weekReport.ts + ./statsAgg.ts (có test vitest).
  *  - UI: nạp dữ liệu qua repos từ '@data' (KHÔNG import dexie/db),
  *    gọi buildWeekReport() với sessions/notes/mistakes của 2 tuần liền nhau.
+ * i18n: mọi chuỗi hiển thị qua useT('stats') — dict ở src/core/i18n/dict/stats.ts;
+ * nhãn thứ trong lưới qua weekdayLabelsMon(lang) (statsAgg).
  */
 import { useEffect, useMemo, useState } from 'react'
 
@@ -16,6 +18,7 @@ import Icon from '@/components/ui/Icon'
 import { cn } from '@/components/ui/cn'
 import type { DailyNote, Mistake, Session } from '@core/types'
 import { addDaysISO, repos, todayISO } from '@data/index'
+import { useT } from '@data/useT'
 import { useSettings } from '@data/useSettings'
 
 import {
@@ -23,20 +26,21 @@ import {
   formatHours,
   heatmapLevel,
   startOfWeekISO,
-  WEEKDAY_LABELS_MON,
+  weekdayLabelsMon,
 } from './statsAgg'
 import { buildWeekReport } from './weekReport'
 import { streakWindowFrom } from '@/features/today/todayLogic'
 
 /** 1 hàng so sánh "so với tuần trước" — teal = tốt hơn, coral = kém hơn. */
 function DeltaRow({ label, delta, unit, moreIsBetter }: { label: string; delta: number; unit: string; moreIsBetter: boolean }) {
+  const { t } = useT('stats')
   const zero = delta === 0
   const good = moreIsBetter ? delta > 0 : delta < 0
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="type-body text-muted">{label}</span>
       {zero ? (
-        <span className="type-body text-muted">không đổi</span>
+        <span className="type-body text-muted">{t('compare.unchanged')}</span>
       ) : (
         <span className={cn('num type-body', good ? 'text-teal' : 'text-coral')}>
           {delta > 0 ? '+' : '−'}
@@ -64,6 +68,7 @@ function BigStat({ value, unit, label, caption }: { value: string; unit: string;
  * Có nút lùi/tiến tuần để xem lại các tuần trước.
  */
 export default function WeekPage() {
+  const { t, lang } = useT('stats')
   const { settings } = useSettings()
   const today = todayISO()
   const currentWeekStart = startOfWeekISO(today)
@@ -144,7 +149,7 @@ export default function WeekPage() {
   const isCurrentWeek = weekStart === currentWeekStart
   const canNext = weekStart < currentWeekStart
   const rangeLabel = isCurrentWeek
-    ? 'tuần này'
+    ? t('range.thisWeek')
     : `${report.range.start.slice(8, 10)}/${report.range.start.slice(5, 7)} – ${report.range.end.slice(8, 10)}/${report.range.end.slice(5, 7)}`
 
   const emptyWeek =
@@ -153,9 +158,9 @@ export default function WeekPage() {
   if (loadError) {
     return (
       <div className="flex flex-col gap-4">
-        <h1 className="type-display">Báo cáo tuần</h1>
+        <h1 className="type-display">{t('week.title')}</h1>
         <div className="rounded-[10px] border border-dashed border-rule bg-card px-4 py-8 text-center">
-          <p className="type-body text-muted">Không mở được sổ báo cáo. Bạn thử tải lại trang nhé!</p>
+          <p className="type-body text-muted">{t('week.loadError')}</p>
         </div>
       </div>
     )
@@ -163,23 +168,18 @@ export default function WeekPage() {
 
   return (
     <div className="flex flex-col gap-4">
-      <p className="section-label">thống kê · tuần</p>
-      <h1 className="type-display">Báo cáo tuần</h1>
+      <p className="section-label">{t('week.pageLabel')}</p>
+      <h1 className="type-display">{t('week.title')}</h1>
 
       {/* Điều hướng tuần */}
       <div className="flex items-center justify-between gap-2">
-        <button
-          type="button"
-          aria-label="Tuần trước"
-          onClick={() => setWeekStart(addDaysISO(weekStart, -7))}
-          className="stepper-btn"
-        >
+        <button type="button" aria-label={t('week.prevAria')} onClick={() => setWeekStart(addDaysISO(weekStart, -7))} className="stepper-btn">
           <Icon name="arrow-left" size={16} />
         </button>
         <p className="num text-[15px] text-ink">{rangeLabel}</p>
         <button
           type="button"
-          aria-label="Tuần sau"
+          aria-label={t('week.nextAria')}
           disabled={!canNext}
           onClick={() => setWeekStart(addDaysISO(weekStart, 7))}
           className="stepper-btn disabled:opacity-40"
@@ -188,62 +188,61 @@ export default function WeekPage() {
         </button>
       </div>
 
-      {loading && <p className="type-body text-muted">đang tổng hợp sổ…</p>}
+      {loading && <p className="type-body text-muted">{t('week.loading')}</p>}
 
       {/* 4 số liệu lớn */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <BigStat
           value={formatHours(report.totals.minutes)}
-          unit="giờ"
-          label="tổng giờ học"
-          caption={`tuần trước: ${formatHours(report.previous.minutes)}`}
+          unit={t('unit.hours')}
+          label={t('label.totalHours')}
+          caption={t('stat.prevHours', { hours: formatHours(report.previous.minutes) })}
         />
         <BigStat
           value={String(report.totals.newWords)}
-          unit="từ"
-          label="từ mới"
-          caption={`tuần trước: ${report.previous.newWords}`}
+          unit={t('unit.words')}
+          label={t('label.newWords')}
+          caption={t('stat.prevWords', { count: report.previous.newWords })}
         />
         <BigStat
           value={String(report.totals.mistakeCount)}
-          unit="lỗi"
-          label="lỗi sai"
-          caption={`tuần trước: ${report.previous.mistakeCount}`}
+          unit={t('unit.mistakes')}
+          label={t('label.mistakes')}
+          caption={t('stat.prevMistakes', { count: report.previous.mistakeCount })}
         />
         <BigStat
           value={String(report.totals.sessionCount)}
-          unit="buổi"
-          label="buổi học"
-          caption={`${report.totals.daysStudied}/7 ngày`}
+          unit={t('unit.sessions')}
+          label={t('label.sessions')}
+          caption={t('stat.daysOutOf7', { count: report.totals.daysStudied })}
         />
       </div>
 
       {/* So với tuần trước */}
       <section className="paper-card px-4 py-4">
-        <p className="section-label">so với tuần trước</p>
+        <p className="section-label">{t('compare.label')}</p>
         <div className="mt-2">
-          <DeltaRow label="giờ học" delta={report.delta.minutes} unit="phút" moreIsBetter />
-          <DeltaRow label="từ mới" delta={report.delta.newWords} unit="từ" moreIsBetter />
-          <DeltaRow label="lỗi sai" delta={report.delta.mistakeCount} unit="lỗi" moreIsBetter={false} />
-          <DeltaRow label="ngày có học" delta={report.delta.daysStudied} unit="ngày" moreIsBetter />
+          <DeltaRow label={t('label.hours')} delta={report.delta.minutes} unit={t('unit.minutes')} moreIsBetter />
+          <DeltaRow label={t('label.newWords')} delta={report.delta.newWords} unit={t('unit.words')} moreIsBetter />
+          <DeltaRow
+            label={t('label.mistakes')}
+            delta={report.delta.mistakeCount}
+            unit={t('unit.mistakes')}
+            moreIsBetter={false}
+          />
+          <DeltaRow label={t('label.daysStudied')} delta={report.delta.daysStudied} unit={t('unit.days')} moreIsBetter />
         </div>
         <hr className="dashed-rule my-3" />
-        <p className="type-caption text-muted">
-          báo cáo tự tổng hợp từ sổ buổi học, ghi chú cuối ngày và sổ lỗi sai của bạn
-        </p>
-        {emptyWeek && (
-          <p className="type-body mt-2 text-muted">
-            Tuần này chưa có dữ liệu — cứ học và ghi sổ, báo cáo sẽ tự đầy dần nhé!
-          </p>
-        )}
+        <p className="type-caption text-muted">{t('compare.sourceNote')}</p>
+        {emptyWeek && <p className="type-body mt-2 text-muted">{t('compare.emptyWeek')}</p>}
       </section>
 
       {/* Từng ngày trong tuần — 7 bubble */}
       <section className="paper-card px-4 py-4">
-        <p className="section-label label-dot-lavender">từng ngày trong tuần</p>
-        <p className="type-caption mt-0.5 text-muted">số phút mỗi ngày (bubble đầy = đạt mục tiêu)</p>
+        <p className="section-label label-dot-lavender">{t('days.label')}</p>
+        <p className="type-caption mt-0.5 text-muted">{t('days.caption')}</p>
         <div className="mt-3 grid grid-cols-7 gap-1.5">
-          {WEEKDAY_LABELS_MON.map((w, i) => {
+          {weekdayLabelsMon(lang).map((w, i) => {
             const date = addDaysISO(weekStart, i)
             const minutes = minutesByDate.get(date) ?? 0
             const level = heatmapLevel(minutes, goal)
@@ -253,7 +252,7 @@ export default function WeekPage() {
                 <span className={cn('type-caption', isToday ? 'font-semibold text-ink' : 'text-muted')}>{w}</span>
                 <div
                   className={cn('aspect-square w-full', level === 0 ? 'bubble' : 'bubble--filled')}
-                  title={`${date}: ${minutes} phút`}
+                  title={t('bubble.minutes', { date, minutes })}
                   style={level > 0 ? { opacity: [1, 0.45, 0.7, 1][level] } : undefined}
                 />
                 <span className="num text-[10px] text-muted">{minutes > 0 ? minutes : '—'}</span>
@@ -270,9 +269,9 @@ export default function WeekPage() {
         </span>
         <div className="min-w-0">
           <p className="num text-[24px] leading-[30px] text-ink">
-            {streak} <span className="text-[12px] text-muted">ngày</span>
+            {streak} <span className="text-[12px] text-muted">{t('unit.days')}</span>
           </p>
-          <p className="type-caption text-muted">chuỗi ngày học liên tiếp (mục tiêu {goal} phút mỗi ngày)</p>
+          <p className="type-caption text-muted">{t('streak.caption', { goal })}</p>
         </div>
       </section>
     </div>

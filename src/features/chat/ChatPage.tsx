@@ -6,19 +6,22 @@ import Icon from '@/components/ui/Icon'
 import { PrimaryButton } from '@/components/ui/buttons'
 import type { ChatMessage } from '@core/types'
 import { repos } from '@data'
+import { useT } from '@data/useT'
 
-import { queryRag, RAG_NOT_CONNECTED_MESSAGE } from '@/features/smart/ragClient'
+import { queryRag } from '@/features/smart/ragClient'
 
 /*
  * D13 — /tro-chuyên: chat hỏi đáp RAG (bong bóng chat, mobile-first khung 390px).
  * - ragClient.ts gọi POST {ragBaseUrl}/ask (timeout 30s, mọi lỗi trả kết quả có cấu trúc
- *   → UI không chết khi fetch lỗi).
+ *   → UI không chết khi fetch lỗi; thông điệp lỗi do client dịch theo `lang`).
  * - Lịch chat lưu bảng chatMessages qua repos.chat (sessionId sinh 1 lần và
  *   nhớ ở máy để tải lại trang vẫn còn cuộc trò chuyện).
  * - ragBaseUrl rỗng → trạng thái rõ ràng kèm giải thích (backend RAG dựng sau,
  *   theo docs/thiet-ke-rag-toeic.md).
  * - Đọc settings qua SettingsRepo trong effect CÓ catch (thay vì useSettings() —
  *   hook scaffold không bắt lỗi, môi trường không IndexedDB sẽ sinh unhandled rejection).
+ * - i18n: mọi chuỗi hiển thị qua useT('chat'); lang truyền xuống queryRag để thông
+ *   điệp lỗi dịch theo ngôn ngữ hiện tại.
  * - ≥768px: cột giữa hẹp 480–720px căn giữa (design-system.md mục 10) — max-w-[600px].
  */
 
@@ -67,6 +70,7 @@ function localOnlyMessage(
 }
 
 export default function ChatPage() {
+  const { t, lang } = useT('chat')
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [historyLoaded, setHistoryLoaded] = useState(false)
@@ -141,10 +145,11 @@ export default function ChatPage() {
     if (!mountedRef.current) return
     setMessages((prev) => [...prev, userMessage])
 
-    // 2) Hỏi backend RAG — mọi lỗi đều là kết quả có cấu trúc, không throw.
+    // 2) Hỏi backend RAG — mọi lỗi đều là kết quả có cấu trúc, không throw;
+    //    thông điệp lỗi do client soạn theo `lang` hiện tại.
     const controller = new AbortController()
     abortRef.current = controller
-    const outcome = await queryRag(ragBaseUrl, text, { signal: controller.signal })
+    const outcome = await queryRag(ragBaseUrl, text, { signal: controller.signal, lang })
     if (!mountedRef.current) return
 
     if (outcome.ok) {
@@ -167,20 +172,17 @@ export default function ChatPage() {
   return (
     <div className="mx-auto flex w-full max-w-[600px] flex-col gap-4">
       <div>
-        <p className="section-label">hỏi đáp cùng trợ lý</p>
-        <h1 className="type-display">Trò chuyện</h1>
+        <p className="section-label">{t('page.kicker')}</p>
+        <h1 className="type-display">{t('page.title')}</h1>
       </div>
 
-      <p className="type-body text-muted">
-        Hỏi về đề thi, ngữ pháp hay từ vựng — trợ lý trả lời dựa trên tài liệu TOEIC đã nạp
-        trên máy bạn.
-      </p>
+      <p className="type-body text-muted">{t('page.intro')}</p>
 
       <div ref={listRef} className="flex max-h-[55dvh] flex-col gap-3 overflow-y-auto pr-1">
-        {!historyLoaded && <p className="type-body text-muted">Đang mở cuộc trò chuyện…</p>}
+        {!historyLoaded && <p className="type-body text-muted">{t('history.loading')}</p>}
 
         {historyLoaded && messages.length === 0 && canChat && (
-          <EmptyState message="Hỏi bất cứ điều gì — vd. “giải thích câu 134 đề 3 ETS 2022” hoặc “phân biệt salary và wage”." />
+          <EmptyState message={t('empty.invite')} />
         )}
 
         {messages.map((message, index) => (
@@ -203,7 +205,7 @@ export default function ChatPage() {
         {sending && (
           <div className="flex justify-start">
             <div className="type-body rounded-[12px] rounded-bl-[4px] border border-rule bg-card px-3.5 py-2.5 text-muted">
-              đang tra cứu tài liệu…
+              {t('sending.status')}
             </div>
           </div>
         )}
@@ -212,26 +214,21 @@ export default function ChatPage() {
       {error && (
         <div className="rounded-[10px] border border-coral bg-pink-soft px-4 py-3" role="alert">
           <p className="type-body text-ink">{error}</p>
-          <p className="type-caption mt-1 text-muted">
-            Tin nhắn của bạn vẫn được giữ — sửa xong nguyên nhân rồi gửi lại nhé.
-          </p>
+          <p className="type-caption mt-1 text-muted">{t('error.keepMessage')}</p>
         </div>
       )}
 
       {historyLoaded && !canChat && (
         <>
           <EmptyState
-            message={RAG_NOT_CONNECTED_MESSAGE}
+            message={t('notConnected.message')}
             action={
               <Link to="/caidat" className="btn btn-secondary type-body">
-                Mở Cài đặt
+                {t('notConnected.action')}
               </Link>
             }
           />
-          <p className="type-caption text-muted">
-            Máy trợ lý chạy trên máy tính của bạn — mở máy trợ lý rồi dán địa chỉ của nó
-            vào Cài đặt là trò chuyện được ngay, không phải cài thêm gì trên điện thoại.
-          </p>
+          <p className="type-caption text-muted">{t('notConnected.hint')}</p>
         </>
       )}
 
@@ -247,8 +244,8 @@ export default function ChatPage() {
               }
             }}
             rows={2}
-            placeholder="Hỏi: giải thích câu 134 đề 3…"
-            aria-label="Câu hỏi cho trợ lý"
+            placeholder={t('composer.placeholder')}
+            aria-label={t('composer.aria')}
             className="type-body w-full resize-none border-0 bg-transparent text-ink placeholder:text-muted focus:outline-none"
           />
           <div className="mt-2 flex items-center justify-between gap-3 border-t border-dashed border-rule pt-3">
@@ -258,21 +255,21 @@ export default function ChatPage() {
                 onClick={startNewConversation}
                 className="type-caption text-muted underline underline-offset-2"
               >
-                bắt đầu trò chuyện mới
+                {t('composer.newChat')}
               </button>
             ) : (
-              <span className="type-caption text-muted">Enter gửi · Shift+Enter xuống dòng</span>
+              <span className="type-caption text-muted">{t('composer.hint')}</span>
             )}
             <PrimaryButton onClick={() => void handleSend()} disabled={sending || !input.trim()}>
               <Icon name="chat" size={18} />
-              Gửi
+              {t('composer.send')}
             </PrimaryButton>
           </div>
         </div>
       )}
 
       {historyLoaded && messages.length > 0 && (
-        <p className="type-caption text-muted">Lịch trò chuyện được lưu ngay trên máy bạn.</p>
+        <p className="type-caption text-muted">{t('history.savedLocally')}</p>
       )}
     </div>
   )

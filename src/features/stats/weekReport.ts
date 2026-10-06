@@ -9,6 +9,7 @@
  *   - mistakes.list()           → lọc theo createdAt nằm trong khoảng tuần (repo không có lọc ngày).
  */
 import { addDaysISO } from '@core/date'
+import { t, type Lang } from '@core/i18n'
 import type { DailyNote, Mistake, Session } from '@core/types'
 
 import { endOfWeekISO, epochOfDayStartISO } from './statsAgg'
@@ -117,17 +118,25 @@ export function buildWeekReport(input: WeekInput): WeekReport {
   }
 }
 
-/** Câu tóm tắt "so với tuần trước" cho card báo cáo tuần (StatsPage). */
-export function describeDelta(delta: WeekDelta): string {
+/**
+ * Câu tóm tắt "so với tuần trước" cho card báo cáo tuần (StatsPage) — dịch theo
+ * `lang` (mặc định 'vi', nguồn chuẩn) qua dict 'stats' (nhóm delta.*). en chia
+ * số ít/số nhiều qua cặp key …One/… (theo mẫu sessions.countOne/count của today).
+ */
+export function describeDelta(delta: WeekDelta, lang: Lang = 'vi'): string {
+  // Chọn key số ít (count = ±1) hoặc số nhiều cho từng chỉ số.
+  const pick = (base: string, count: number): string =>
+    t(lang, 'stats', Math.abs(count) === 1 ? `${base}One` : base, { count: Math.abs(count) })
+
   const parts: string[] = []
-  if (delta.minutes === 0) parts.push('giờ học giữ nguyên')
-  else parts.push(`${delta.minutes > 0 ? 'học nhiều' : 'học kém'} hơn ${Math.abs(delta.minutes)} phút`)
+  if (delta.minutes === 0) parts.push(t(lang, 'stats', 'delta.hoursSame'))
+  else parts.push(pick(delta.minutes > 0 ? 'delta.hoursMore' : 'delta.hoursLess', delta.minutes))
 
-  if (delta.newWords === 0) parts.push('từ mới giữ nguyên')
-  else parts.push(`${delta.newWords > 0 ? 'thêm' : 'bớt'} ${Math.abs(delta.newWords)} từ mới`)
+  if (delta.newWords === 0) parts.push(t(lang, 'stats', 'delta.wordsSame'))
+  else parts.push(pick(delta.newWords > 0 ? 'delta.wordsMore' : 'delta.wordsLess', delta.newWords))
 
-  if (delta.mistakeCount === 0) parts.push('lỗi sai giữ nguyên')
-  else parts.push(`${delta.mistakeCount > 0 ? 'nhiều' : 'ít'} hơn ${Math.abs(delta.mistakeCount)} lỗi`)
+  if (delta.mistakeCount === 0) parts.push(t(lang, 'stats', 'delta.mistakesSame'))
+  else parts.push(pick(delta.mistakeCount > 0 ? 'delta.mistakesMore' : 'delta.mistakesLess', delta.mistakeCount))
 
-  return `so với tuần trước: ${parts.join(' · ')}`
+  return t(lang, 'stats', 'delta.prefix', { parts: parts.join(' · ') })
 }

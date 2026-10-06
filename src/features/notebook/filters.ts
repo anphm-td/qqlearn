@@ -20,13 +20,13 @@ export function matchesQuery(fields: string[], query: string): boolean {
 
 export interface VocabFilter {
   query: string
-  /** Part lọc; 0 = tất cả (từ part 0 "không rõ" chỉ hiện ở chế độ tất cả). */
-  part: number
+  /** Môn lọc (subjectId); 0 = tất cả (môn 0 "chưa phân môn" chỉ hiện ở chế độ tất cả). */
+  subjectId: number
 }
 
 export function filterVocab(items: Vocab[], f: VocabFilter): Vocab[] {
   return items.filter((v) => {
-    if (f.part > 0 && v.part !== f.part) return false
+    if (f.subjectId > 0 && v.subjectId !== f.subjectId) return false
     return matchesQuery([v.word, v.meaning, v.example, v.sourceTest], f.query)
   })
 }
@@ -35,13 +35,13 @@ export function filterVocab(items: Vocab[], f: VocabFilter): Vocab[] {
 
 export interface NoteFilter {
   query: string
-  /** Part lọc theo partStudied; 0 = tất cả. */
-  part: number
+  /** Môn lọc theo các môn đã học của ngày; 0 = tất cả. */
+  subjectId: number
 }
 
 export function filterNotes(items: DailyNote[], f: NoteFilter): DailyNote[] {
   return items.filter((n) => {
-    if (f.part > 0 && !n.partStudied.includes(f.part)) return false
+    if (f.subjectId > 0 && !n.partStudied.includes(f.subjectId)) return false
     return matchesQuery([n.reflection, n.mistakesSummary, n.date], f.query)
   })
 }
@@ -51,14 +51,14 @@ export function filterNotes(items: DailyNote[], f: NoteFilter): DailyNote[] {
 export type ReviewedFilter = 'all' | 'unreviewed' | 'reviewed'
 
 export interface MistakeFilter {
-  /** Part lọc; 0 = tất cả. */
-  part: number
+  /** Môn lọc (subjectId); 0 = tất cả. */
+  subjectId: number
   reviewed: ReviewedFilter
 }
 
 export function filterMistakes(items: Mistake[], f: MistakeFilter): Mistake[] {
   return items.filter((m) => {
-    if (f.part > 0 && m.part !== f.part) return false
+    if (f.subjectId > 0 && m.subjectId !== f.subjectId) return false
     if (f.reviewed === 'unreviewed' && m.reviewed) return false
     if (f.reviewed === 'reviewed' && !m.reviewed) return false
     return true

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
-import type { Mistake, Session, Settings, SrsCard } from '@core/types'
+import type { Mistake, Session, Settings, Subject, SrsCard } from '@core/types'
 
 // Mock lớp data — card không được đụng Dexie/db trực tiếp, chỉ qua repos.
 vi.mock('@data', () => ({
@@ -11,12 +11,12 @@ vi.mock('@data', () => ({
     mistakes: { list: vi.fn() },
     srs: { listDue: vi.fn() },
     sessions: { listBetween: vi.fn() },
+    subjects: { list: vi.fn() },
   },
 }))
 
 vi.mock('@/features/smart/ragClient', () => ({
   queryRag: vi.fn(),
-  RAG_NOT_CONNECTED_MESSAGE: 'Chưa kết nối máy trợ lý — nhập địa chỉ máy trợ lý trong Cài đặt',
 }))
 
 import { repos } from '@data'
@@ -27,7 +27,14 @@ const getSettings = vi.mocked(repos.settings.get)
 const listMistakes = vi.mocked(repos.mistakes.list)
 const listDue = vi.mocked(repos.srs.listDue)
 const listBetween = vi.mocked(repos.sessions.listBetween)
+const listSubjects = vi.mocked(repos.subjects.list)
 const queryRagMock = vi.mocked(queryRag)
+
+const SUBJECTS: Subject[] = [
+  { id: 1, name: 'TOEIC', colorHex: '#FFD273', goalMinutesPerDay: 0, archived: false, createdAt: 0, updatedAt: 0 },
+  { id: 2, name: 'Toán', colorHex: '#BFAEE3', goalMinutesPerDay: 0, archived: false, createdAt: 0, updatedAt: 0 },
+  { id: 3, name: 'Tiếng Nhật', colorHex: '#FEC5E6', goalMinutesPerDay: 0, archived: false, createdAt: 0, updatedAt: 0 },
+]
 
 function makeSettings(overrides: Partial<Settings> = {}): Settings {
   return {
@@ -42,6 +49,7 @@ function makeSettings(overrides: Partial<Settings> = {}): Settings {
     pomodoro: { focusMin: 25, breakMin: 5 },
     syncMode: 'local',
     serverUrl: '',
+    language: 'vi',
     updatedAt: 0,
     ...overrides,
   }
@@ -51,7 +59,7 @@ function makeMistake(overrides: Partial<Mistake> = {}): Mistake {
   return {
     id: 1,
     testNo: 0,
-    part: 5,
+    subjectId: 2,
     questionNo: 1,
     myAnswer: 'A',
     correctAnswer: 'B',
@@ -71,7 +79,7 @@ function makeSession(overrides: Partial<Session> = {}): Session {
     startedAt: 0,
     endedAt: 0,
     durationMin: 25,
-    part: 5,
+    subjectId: 2,
     activity: 'ngữ pháp',
     source: 'timer',
     note: '',
@@ -104,6 +112,7 @@ function renderCard(): void {
 beforeEach(() => {
   vi.clearAllMocks()
   getSettings.mockResolvedValue(makeSettings())
+  listSubjects.mockResolvedValue(SUBJECTS)
 })
 
 describe('SuggestionCard (D14) — card "Hôm nay nên học gì"', () => {
@@ -137,18 +146,18 @@ describe('SuggestionCard (D14) — card "Hôm nay nên học gì"', () => {
     expect(await screen.findByText(/3 từ đến hạn ôn hôm nay/)).toBeVisible()
   })
 
-  it('ưu tiên 3: 7 ngày qua có học nhưng còn part chưa chạm → gợi ý part đó', async () => {
+  it('ưu tiên 3: 7 ngày qua có học nhưng còn môn chưa chạm → gợi ý môn đó', async () => {
     listMistakes.mockResolvedValue([])
     listDue.mockResolvedValue([])
     listBetween.mockResolvedValue([
-      makeSession({ part: 3, durationMin: 90 }),
-      makeSession({ part: 5, durationMin: 25 }),
+      makeSession({ subjectId: 2, durationMin: 90 }),
+      makeSession({ subjectId: 3, durationMin: 25 }),
     ])
 
     renderCard()
 
-    // part chưa học = 0 phút → ít nhất; các buổi này đủ để tổng > 0
-    expect(await screen.findByText(/chưa chạm Part 1/)).toBeVisible()
+    // TOEIC (id 1) chưa học = 0 phút → ít nhất
+    expect(await screen.findByText(/chưa chạm môn TOEIC/)).toBeVisible()
   })
 
   it('không có dữ liệu gì → empty state mời bắt đầu kèm nút tới trang Học', async () => {

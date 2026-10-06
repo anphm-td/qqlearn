@@ -90,3 +90,22 @@ Khung mobile 390px, light mode, UI tiếng Việt. Google Fonts: Bricolage Grote
 - **Tro chuyện · Onboarding · Cài đặt**: cột giữa hẹp 480–720px căn giữa — nội dung dạng đọc/form đọc tốt nhất khi hẹp.
 - **Phím tắt cơ bản**: `1`–`4` đổi 4 tab chính, `N` mở ghi chú hôm nay. Tự bỏ qua khi focus đang nằm trong input/textarea/contenteditable. Không thêm phím tắt khác ở phiên bản đầu.
 - **Không thêm màu/font mới**: mọi thành phần desktop vẫn dùng tokens mục 5–7; card, bubble, đường đôi, washi, nút giữ nguyên quy cách — chỉ thay đổi bố cục.
+
+## 11. Logo app — bubble "100"
+
+> Bổ sung 05.10.2026: logo chính thức của qqlearn / Sổ học TOEIC, user chốt **số 100 ở chính giữa**.
+
+- **Cấu trúc**: bubble oval đặc `--teal` (tỉ lệ 196:140, tâm lệch xuống 12/512) + số **"100"** viết bằng nét tròn dày 34 (như Quicksand 700) màu `--bg` kem nằm chính giữa oval + **sao 4 cánh `--coral`** nhỏ (r 26) ở góc phải trên (418,142) — chất streak. Nền `--bg` kem; icon PWA/Android bo góc 22%, maskable tràn viền với nội dung co 82% về tâm.
+- **Ý nghĩa**: "100" là điểm trọn vẹn — mục tiêu mỗi buổi học; oval bubble là hình ngữ pháp đặc trưng của app (mục 4, 7).
+- **File**: master `design/logo/qqlearn-logo.svg` · PWA `public/icon.svg` + `public/icon-maskable.svg` · Android `assets/*.png` → `npx capacitor-assets generate --android` → `android/app/src/main/res`. Sinh lại tất cả bằng `node scripts/make-icons.mjs` (single source of truth — sửa logo chỉ ở đây).
+- **Phương án phụ** (đã trình, chưa dùng): A "hatch" — oval nét đứt + tô chì teal, số 100 mực `--ink` (giữ chất v5 nhất); C "outline" — chỉ nét đứt + số 100 teal. Lưu tại `design/logo/phuong-an-*.svg`.
+
+## 12. Ngôn ngữ giao diện (vi/en)
+
+> Bổ sung 2026-10-06 theo yêu cầu: app có **tiếng Anh tùy chọn trong Cài đặt**, mặc định tiếng Việt.
+
+- Hai ngôn ngữ: `vi` (mặc định) và `en`; đổi trong Cài đặt → áp dụng tức thì, không cần tải lại app.
+- Giọng copy mục 8 giữ nguyên ở cả hai ngôn ngữ: chủ động, động từ cụ thể, lời mời hành động ở empty state.
+- Quy tắc "KHÔNG tech" (mục 2) áp dụng cho cả tiếng Anh — không từ kỹ thuật, không nhãn SECTION giãn ký tự.
+- Không dịch: số liệu/ngày tháng (font Quicksand giữ nguyên), tên môn do user tự đặt, thuật ngữ học thuật (TOEIC, Part, SRS).
+- Bản dịch phải tự nhiên kiểu sổ tay viết tay, không dịch máy.

@@ -25,12 +25,14 @@ export function createMistake(db: DatabaseSync, body: unknown): MistakeData {
   const ts = Date.now()
   const info = db
     .prepare(
-      `INSERT INTO mistakes (testNo, part, questionNo, myAnswer, correctAnswer, cause, explanation, reviewed, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO mistakes (testNo, subject_id, part, questionNo, myAnswer, correctAnswer, cause, explanation, reviewed, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .run(
       input.testNo,
-      input.part,
+      input.subjectId,
+      // part = cột legacy của khung TOEIC cũ — hàng mới luôn ghi 0.
+      0,
       input.questionNo,
       input.myAnswer,
       input.correctAnswer,
@@ -55,7 +57,7 @@ export function updateMistake(db: DatabaseSync, rawId: string, body: unknown): v
     values.push(value)
   }
   if (patch.testNo !== undefined) push('testNo', patch.testNo)
-  if (patch.part !== undefined) push('part', patch.part)
+  if (patch.subjectId !== undefined) push('subject_id', patch.subjectId)
   if (patch.questionNo !== undefined) push('questionNo', patch.questionNo)
   if (patch.myAnswer !== undefined) push('myAnswer', patch.myAnswer)
   if (patch.correctAnswer !== undefined) push('correctAnswer', patch.correctAnswer)

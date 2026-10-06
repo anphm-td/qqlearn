@@ -5,14 +5,16 @@
  *   POST /ask  body {question, mode, top_k?, filters?} → {answer, citations[], …}
  * Backend RAG (FastAPI) được dựng riêng sau, nên mọi lỗi (mạng, timeout, mã HTTP,
  * JSON sai) đều trả về KẾT QUẢ CÓ CẤU TRÚC thay vì throw — UI không bao giờ "chết".
+ *
+ * i18n: `message` hiển thị thẳng cho người học — tạo qua t(lang, 'smart', …) với
+ * `lang` từ RagQueryOptions (mặc định 'vi'). UI truyền lang hiện tại (useT().lang)
+ * để thông điệp lỗi dịch theo ngôn ngữ đã chọn.
  */
+
+import { t, type Lang } from '@core/i18n'
 
 /** Hạn chờ tối đa cho một câu hỏi — 30 giây (theo yêu cầu tính năng). */
 export const RAG_TIMEOUT_MS = 30_000
-
-/** Thông điệp chuẩn khi chưa cấu hình máy trợ lý — dùng chung SuggestionCard/ChatPage. */
-export const RAG_NOT_CONNECTED_MESSAGE =
-  'Chưa kết nối máy trợ lý — nhập địa chỉ máy trợ lý trong Cài đặt'
 
 export interface RagQuerySuccess {
   ok: true
@@ -32,7 +34,7 @@ export type RagQueryFailureReason =
 export interface RagQueryFailure {
   ok: false
   reason: RagQueryFailureReason
-  /** Thông điệp thân thiện, hiển thị thẳng cho người học. */
+  /** Thông điệp thân thiện, hiển thị thẳng cho người học (đã dịch theo lang). */
   message: string
 }
 
@@ -43,6 +45,8 @@ export interface RagQueryOptions {
   timeoutMs?: number
   /** Tín hiệu huỷ từ bên ngoài (component unmount) — tuỳ chọn. */
   signal?: AbortSignal
+  /** Ngôn ngữ cho thông điệp lỗi hiển thị — mặc định 'vi' (nguồn chuẩn). */
+  lang?: Lang
 }
 
 /**
@@ -54,18 +58,19 @@ export async function queryRag(
   question: string,
   options: RagQueryOptions = {},
 ): Promise<RagQueryResult> {
+  const lang = options.lang ?? 'vi'
   const trimmedQuestion = question.trim()
   if (!trimmedQuestion) {
     return {
       ok: false,
       reason: 'empty-question',
-      message: 'Bạn chưa nhập câu hỏi — gõ điều bạn muốn hỏi đã nhé.',
+      message: t(lang, 'smart', 'rag.emptyQuestion'),
     }
   }
 
   const base = baseUrl.trim().replace(/\/+$/, '')
   if (!base) {
-    return { ok: false, reason: 'empty-url', message: RAG_NOT_CONNECTED_MESSAGE }
+    return { ok: false, reason: 'empty-url', message: t(lang, 'smart', 'rag.notConnected') }
   }
 
   const timeoutMs = options.timeoutMs ?? RAG_TIMEOUT_MS
@@ -86,7 +91,7 @@ export async function queryRag(
       return {
         ok: false,
         reason: 'server',
-        message: `Máy trợ lý gặp sự cố (mã ${res.status}). Thử lại sau ít phút nhé.`,
+        message: t(lang, 'smart', 'rag.serverError', { code: res.status }),
       }
     }
 
@@ -98,7 +103,7 @@ export async function queryRag(
       return {
         ok: false,
         reason: 'bad-response',
-        message: 'Máy trợ lý trả kết quả không đọc được. Thử lại nhé.',
+        message: t(lang, 'smart', 'rag.badResponse'),
       }
     }
 
@@ -107,25 +112,25 @@ export async function queryRag(
       return {
         ok: false,
         reason: 'bad-response',
-        message: 'Máy trợ lý chưa trả lời được câu này. Thử hỏi cách khác nhé.',
+        message: t(lang, 'smart', 'rag.noAnswer'),
       }
     }
     return { ok: true, answer, citations: extractCitations(data) }
   } catch {
     if (controller.signal.aborted) {
       if (options.signal?.aborted) {
-        return { ok: false, reason: 'network', message: 'Đã huỷ câu hỏi này.' }
+        return { ok: false, reason: 'network', message: t(lang, 'smart', 'rag.cancelled') }
       }
       return {
         ok: false,
         reason: 'timeout',
-        message: `Máy trợ lý trả lời quá lâu (quá ${Math.round(timeoutMs / 1000)} giây). Thử hỏi ngắn gọn hơn nhé.`,
+        message: t(lang, 'smart', 'rag.timeout', { seconds: Math.round(timeoutMs / 1000) }),
       }
     }
     return {
       ok: false,
       reason: 'network',
-      message: 'Không kết nối được máy trợ lý. Kiểm tra máy trợ lý đã mở chưa rồi thử lại nhé.',
+      message: t(lang, 'smart', 'rag.network'),
     }
   } finally {
     clearTimeout(timer)

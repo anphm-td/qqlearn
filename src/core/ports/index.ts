@@ -3,6 +3,7 @@
  */
 export type { SettingsRepo } from './settings'
 export type { SessionRepo } from './sessions'
+export type { SubjectRepo } from './subjects'
 export type { VocabRepo } from './vocab'
 export type { SrsRepo, SrsCardInput } from './srs'
 export type { MistakeRepo } from './mistakes'
@@ -10,4 +11,10 @@ export type { ScoreRepo } from './scores'
 export type { PhotoRepo } from './photos'
 export type { ChatRepo } from './chat'
 export type { NoteRepo } from './notes'
-export type { RestoreRepo, RestorePayload, RestorePhotoInput, RestoreCardInput } from './restore'
+export type {
+  RestoreRepo,
+  RestorePayload,
+  RestorePhotoInput,
+  RestoreCardInput,
+  RestoreSubjectInput,
+} from './restore'

@@ -41,13 +41,30 @@ export interface RestoreCardInput {
   correctCount: number
 }
 
+/**
+ * Môn học trong bản sao lưu — giữ NGUYÊN id CŨ trong bản sao lưu để impl ánh xạ
+ * id cũ → id mới khi ghi lại, rồi remap subjectId của sessions/vocab/mistakes/
+ * scores theo ánh xạ đó (pattern refKey của ảnh: id bản sao lưu không có ý nghĩa
+ * sau khi ghi, chỉ có ánh xạ là nguồn sự thật).
+ */
+export interface RestoreSubjectInput {
+  /** Id môn trong bản sao lưu (id mới được sinh lúc restore). */
+  id: number
+  name: string
+  colorHex: string
+  goalMinutesPerDay: number
+  archived: boolean
+}
+
 /** Toàn bộ dữ liệu của 1 bản sao lưu, đã tách sẵn để ghi qua repos. */
 export interface RestorePayload {
-  /** Các trường cài đặt — KHÔNG gồm syncMode/serverUrl (nguồn dữ liệu là lựa chọn của máy này). */
+  /** Các trường cài đặt — KHÔNG gồm syncMode/serverUrl/checkinEnabled (nguồn dữ liệu + lựa chọn máy là của máy này). */
   settings: Pick<
     Settings,
     'dailyGoalMinutes' | 'targetScore' | 'examDate' | 'reminderTime' | 'ragBaseUrl' | 'onboardingDone' | 'pomodoro'
   >
+  /** Môn học của bản sao lưu — id CŨ để ánh xạ (xem RestoreSubjectInput). */
+  subjects: RestoreSubjectInput[]
   sessions: NewSession[]
   vocab: NewVocab[]
   srsCards: RestoreCardInput[]
@@ -60,8 +77,10 @@ export interface RestorePayload {
 
 export interface RestoreRepo {
   /**
-   * Khôi phục trong MỘT transaction: xoá sạch 8 bảng dữ liệu rồi ghi payload
-   * (settings chỉ ghi các trường của payload, giữ nguyên syncMode/serverUrl hiện có).
+   * Khôi phục trong MỘT transaction: xoá sạch bảng dữ liệu (gồm subjects) rồi ghi
+   * payload (settings chỉ ghi các trường của payload, giữ nguyên syncMode/
+   * serverUrl/checkinEnabled hiện có). subjectId các hàng được remap theo ánh xạ
+   * id-cũ → id-mới của bảng subjects; môn không có trong payload → 0 (chưa phân môn).
    * Lỗi bất kỳ → rollback toàn bộ, dữ liệu như trước khi gọi.
    */
   restoreAll(payload: RestorePayload): Promise<void>

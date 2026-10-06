@@ -132,4 +132,18 @@ describe('describeDelta — câu so sánh thân thiện', () => {
       'so với tuần trước: giờ học giữ nguyên · từ mới giữ nguyên · lỗi sai giữ nguyên',
     )
   })
+
+  it('mặc định lang="vi" giữ nguyên văn; lang="en" dịch tự nhiên', () => {
+    const delta = { minutes: 45, sessionCount: 1, daysStudied: 2, newWords: 6, mistakeCount: -3 }
+    expect(describeDelta(delta)).toBe(
+      'so với tuần trước: học nhiều hơn 45 phút · thêm 6 từ mới · ít hơn 3 lỗi',
+    )
+    expect(describeDelta(delta, 'en')).toBe('vs last week: 45 more minutes studied · 6 more new words · 3 fewer mistakes')
+    expect(describeDelta({ minutes: -30, sessionCount: 0, daysStudied: 0, newWords: -2, mistakeCount: 1 }, 'en')).toBe(
+      'vs last week: 30 fewer minutes studied · 2 fewer new words · 1 more mistake',
+    )
+    expect(
+      describeDelta({ minutes: 0, sessionCount: 0, daysStudied: 0, newWords: 0, mistakeCount: 0 }, 'en'),
+    ).toBe('vs last week: study hours unchanged · new words unchanged · mistakes unchanged')
+  })
 })

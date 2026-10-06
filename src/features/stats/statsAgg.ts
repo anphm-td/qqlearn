@@ -6,12 +6,13 @@
  * tuần bắt đầu THỨ HAI. So sánh ngày dùng so sánh chuỗi (ISO cùng dạng, so được như số).
  */
 import { addDaysISO } from '@core/date'
+import { t, type Lang } from '@core/i18n'
 import type { Session } from '@core/types'
 
 /** Hàng dữ liệu tối giản để tính phút — chỉ cần date + durationMin. */
 export type SessionMinuteRow = Pick<Session, 'date' | 'durationMin'>
-/** Hàng dữ liệu tối giản để phân bổ Part. */
-export type SessionPartRow = Pick<Session, 'part' | 'durationMin'>
+/** Hàng dữ liệu tối giản để phân bổ môn. */
+export type SessionSubjectRow = Pick<Session, 'subjectId' | 'durationMin'>
 
 // ===== Helpers ngày (bổ sung cho '@core/date', vẫn thuần TS) =====
 
@@ -24,11 +25,22 @@ function pad2(n: number): string {
   return String(n).padStart(2, '0')
 }
 
-/** Thứ trong tuần 0=CN..6=T7 → nhãn ngắn tiếng Việt. */
-export const WEEKDAY_LABELS_SHORT = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'] as const
+// ===== Nhãn thứ/tháng theo ngôn ngữ (i18n — dict 'stats', mặc định 'vi') =====
 
-/** Nhãn thứ theo tuần bắt đầu thứ Hai (cho lưới heatmap). */
-export const WEEKDAY_LABELS_MON = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'] as const
+/** Nhãn ngắn 1 thứ (getDay(): 0=CN..6=T7) — dịch theo `lang` (dict 'stats'). */
+export function weekdayLabel(day0: number, lang: Lang = 'vi'): string {
+  return t(lang, 'stats', `weekday.${((day0 % 7) + 7) % 7}`)
+}
+
+/** 7 nhãn thứ theo tuần bắt đầu thứ Hai (cho lưới heatmap) — dịch theo `lang`. */
+export function weekdayLabelsMon(lang: Lang = 'vi'): string[] {
+  return [1, 2, 3, 4, 5, 6, 0].map((d) => weekdayLabel(d, lang))
+}
+
+/** Nhãn ngắn 1 tháng (1–12): vi 'T5' · en 'May' — dịch theo `lang` (dict 'stats'). */
+export function monthShort(month1: number, lang: Lang = 'vi'): string {
+  return t(lang, 'stats', `month.${((month1 % 12) + 12) % 12 || 12}`)
+}
 
 function weekdayOf(iso: string): number {
   const { y, m, d } = parseISO(iso)
@@ -97,7 +109,7 @@ export function formatAxisHours(minutes: number): string {
 export type Granularity = 'day' | 'week' | 'month'
 
 export interface StatBucket {
-  /** Nhãn cột: 'T2'..'CN' (ngày) · '28/9' (tuần — thứ Hai) · 'T10' (tháng). */
+  /** Nhãn cột: 'CN'..'T7'/'Sun'..'Sat' (ngày) · '28/9' (tuần — thứ Hai) · 'T10'/'Oct' (tháng) — theo `lang`. */
   label: string
   /** Tổng phút trong bucket. */
   minutes: number
@@ -116,15 +128,16 @@ export interface AggregateOptions {
 
 /**
  * Gom phút học theo granularity, kết thúc ở ngày tham chiếu `refISO`.
- * - day: `count` ngày liên tiếp cuối (label theo thứ).
+ * - day: `count` ngày liên tiếp cuối (label theo thứ — dịch theo `lang`).
  * - week: `count` tuần (bắt đầu thứ Hai) cuối.
- * - month: `count` tháng dương lịch cuối.
+ * - month: `count` tháng dương lịch cuối (label 'T5'/'May' theo `lang`).
  */
 export function aggregateBuckets(
   rows: readonly SessionMinuteRow[],
   gran: Granularity,
   refISO: string,
   options: AggregateOptions = {},
+  lang: Lang = 'vi',
 ): StatBucket[] {
   const byDate = new Map<string, number>()
   for (const r of rows) {
@@ -149,7 +162,7 @@ export function aggregateBuckets(
     for (let i = n - 1; i >= 0; i--) {
       const date = addDaysISO(refISO, -i)
       out.push({
-        label: WEEKDAY_LABELS_SHORT[weekdayOf(date)],
+        label: weekdayLabel(weekdayOf(date), lang),
         minutes: byDate.get(date) ?? 0,
         from: date,
         to: date,
@@ -181,7 +194,7 @@ export function aggregateBuckets(
     const first = firstOfMonthISO(refISO, -i)
     const last = lastDayOfMonthISO(first)
     out.push({
-      label: `T${parseISO(first).m}`,
+      label: monthShort(parseISO(first).m, lang),
       minutes: sumRange(first, last),
       from: first,
       to: last,
@@ -191,32 +204,38 @@ export function aggregateBuckets(
   return out
 }
 
-// ===== Phân bổ theo Part =====
+// ===== Phân bổ theo môn =====
 
-export interface PartSlice {
-  /** Part 1–7; 0 = "chưa rõ" (luôn xếp cuối). */
-  part: number
+export interface SubjectSlice {
+  /** Môn học (subjectId); 0 = "chưa phân môn" (luôn xếp cuối). */
+  subjectId: number
   minutes: number
 }
 
-/** Tổng phút theo Part 1–7, sắp giảm dần theo phút; Part 0 ("chưa rõ") xếp cuối nếu có. */
-export function allocateByPart(rows: readonly SessionPartRow[]): PartSlice[] {
+/**
+ * Tổng phút theo môn từ các buổi học — chỉ liệt kê môn CÓ dữ liệu, sắp giảm dần
+ * theo phút; subjectId 0 ("chưa phân môn") xếp cuối nếu có. Môn chưa học không
+ * xuất hiện (biểu đồ chỉ vẽ những gì có số liệu).
+ */
+export function allocateBySubject(rows: readonly SessionSubjectRow[]): SubjectSlice[] {
   const sums = new Map<number, number>()
   for (const r of rows) {
-    const p = Math.min(7, Math.max(0, Math.trunc(r.part)))
-    sums.set(p, (sums.get(p) ?? 0) + Math.max(0, r.durationMin))
+    const id = Math.max(0, Math.trunc(r.subjectId))
+    sums.set(id, (sums.get(id) ?? 0) + Math.max(0, r.durationMin))
   }
 
-  const named: PartSlice[] = []
-  for (let p = 1; p <= 7; p++) {
-    const m = sums.get(p) ?? 0
-    if (m > 0) named.push({ part: p, minutes: m })
-  }
-  named.sort((a, b) => b.minutes - a.minutes || a.part - b.part)
+  const withData = [...sums.entries()]
+    .map(([subjectId, minutes]) => ({ subjectId, minutes: Math.max(0, minutes) }))
+    .filter((s) => s.minutes > 0)
 
-  const unclear = sums.get(0) ?? 0
-  if (unclear > 0) named.push({ part: 0, minutes: unclear })
-  return named
+  // Giảm dần theo phút; "chưa phân môn" (0) luôn xếp cuối, hoà thì id nhỏ trước.
+  withData.sort(
+    (a, b) =>
+      (a.subjectId === 0 ? 1 : 0) - (b.subjectId === 0 ? 1 : 0) ||
+      b.minutes - a.minutes ||
+      a.subjectId - b.subjectId,
+  )
+  return withData
 }
 
 // ===== Heatmap bubble theo tháng =====

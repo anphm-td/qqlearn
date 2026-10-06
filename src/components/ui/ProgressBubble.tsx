@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 
+import { useT } from '@data/useT'
+
 import { cn } from '@/components/ui/cn'
 
 function prefersReducedMotion(): boolean {
@@ -48,6 +50,7 @@ interface ProgressBubbleProps {
  * font Data Quicksand 700.
  */
 export default function ProgressBubble({ percent, caption, width = 208, className }: ProgressBubbleProps) {
+  const { t } = useT('common')
   const uid = useId()
   const patternId = `hatch-${uid}`
   const maskId = `reveal-${uid}`
@@ -67,7 +70,7 @@ export default function ProgressBubble({ percent, caption, width = 208, classNam
           viewBox={`0 0 ${VB_W} ${VB_H}`}
           className="h-auto w-full"
           role="img"
-          aria-label={`Tiến độ hôm nay: ${percent}% mục tiêu hằng ngày`}
+          aria-label={t('progress.aria', { percent })}
         >
           <defs>
             {/* Nét chì teal tô bên trong bubble (mục 4: "tô texture nét chì teal") */}

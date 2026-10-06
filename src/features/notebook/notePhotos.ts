@@ -6,6 +6,8 @@
  * dailyNotes.photoIds qua NoteRepo → xem lại bằng gallery trong ghi chú.
  * IO với repo nằm ở hook useNotePhotos.ts — file này chỉ giữ quy tắc thuần.
  */
+import { t, type Lang } from '@core/i18n'
+
 import type { DailyNote } from '@core/types'
 
 /** Giới hạn dung lượng 1 ảnh (chặn phình IndexedDB). */
@@ -15,10 +17,13 @@ export function isImageMime(mime: string): boolean {
   return mime.startsWith('image/')
 }
 
-/** Thông báo lỗi khi đính ảnh — null nếu ảnh đạt. */
-export function photoAttachError(mime: string, sizeBytes: number): string | null {
-  if (!isImageMime(mime)) return 'Chỉ đính kèm được file ảnh.'
-  if (sizeBytes > MAX_PHOTO_BYTES) return 'Ảnh quá lớn — chọn ảnh dưới 10 MB.'
+/**
+ * Thông báo lỗi khi đính ảnh — null nếu ảnh đạt.
+ * `lang` mặc định 'vi' (nguồn chuẩn) — UI truyền ngôn ngữ hiện tại để dịch.
+ */
+export function photoAttachError(mime: string, sizeBytes: number, lang: Lang = 'vi'): string | null {
+  if (!isImageMime(mime)) return t(lang, 'notebook', 'photo.notImage')
+  if (sizeBytes > MAX_PHOTO_BYTES) return t(lang, 'notebook', 'photo.tooLarge')
   return null
 }
 

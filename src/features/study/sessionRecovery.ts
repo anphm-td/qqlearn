@@ -18,7 +18,8 @@ export interface SavedSessionState {
   timer: TimerState
   /** Thời lượng đích (phút) tại lúc lưu. */
   targetMin: number
-  part: number
+  /** Môn đang chọn (subjectId; 0 = chưa phân môn). */
+  subjectId: number
   activity: string
   /** Mốc kết thúc giờ nghỉ (epoch ms) hoặc null. */
   breakEndsAt: number | null
@@ -68,7 +69,7 @@ export function loadSessionState(today: string): SavedSessionState | null {
       accumulatedMs: typeof s.timer.accumulatedMs === 'number' ? s.timer.accumulatedMs : 0,
     },
     targetMin: s.targetMin,
-    part: typeof s.part === 'number' ? s.part : 0,
+    subjectId: typeof s.subjectId === 'number' ? s.subjectId : 0,
     activity: typeof s.activity === 'string' ? s.activity : 'nghe',
     breakEndsAt: typeof s.breakEndsAt === 'number' ? s.breakEndsAt : null,
     sessionStartAt: s.sessionStartAt,

@@ -16,7 +16,7 @@ export function saveTextFile(fileName: string, mime: string, content: string): v
   window.setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
-/** 'so-hoc-toeic' + '2026-10-03' → 'so-hoc-toeic-2026-10-03' (tên tệp tải về). */
+/** 'qqlearn' + '2026-10-03' → 'qqlearn-2026-10-03' (tên tệp tải về). */
 export function stampFileName(base: string, now: Date): string {
   const y = now.getFullYear()
   const m = String(now.getMonth() + 1).padStart(2, '0')

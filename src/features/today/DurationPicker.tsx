@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { cn } from '@/components/ui/cn'
 import { clampInt } from '@/features/today/todayLogic'
+import { useT } from '@data/useT'
 
 /*
  * Bộ chọn thời lượng TỰ CHỈNH (design-system.md mục 3 — bắt buộc):
@@ -10,6 +11,8 @@ import { clampInt } from '@/features/today/todayLogic'
  *   - preset chỉ là gợi ý nhanh, luôn kèm đường tự chỉnh ở trên.
  * Dùng cho: thời lượng buổi học, mục tiêu hằng ngày (mục tiêu điểm cũng tái dùng
  * với unit='điểm').
+ * i18n: nhãn/aria của picker qua useT('today'); `unit` vẫn nhận prop từ người gọi
+ * (truyền rõ ràng thì dùng nguyên giá trị đó) — bỏ trống thì mặc định dịch theo ngôn ngữ.
  */
 
 /** Pill lựa chọn dùng chung (preset thời lượng, hoạt động học…) — KHÔNG dùng part-chip. */
@@ -53,7 +56,7 @@ interface DurationPickerProps {
   max?: number
   /** Bước stepper — mặc định ±5 (mục 3). */
   step?: number
-  /** Đơn vị — 'phút' (mặc định) hoặc 'điểm'… */
+  /** Đơn vị — truyền rõ ('phút', 'điểm'…); bỏ trống thì mặc định 'unit.minutes' theo dict. */
   unit?: string
   /** Nhãn nhỏ phía trên (chữ thường + chấm màu). */
   label?: string
@@ -69,11 +72,14 @@ export default function DurationPicker({
   min = 5,
   max = 1440,
   step = 5,
-  unit = 'phút',
+  unit,
   label,
   compact = false,
   className,
 }: DurationPickerProps) {
+  const { t } = useT('today')
+  // Đơn vị hiển thị: prop người gọi truyền (vi tự nhiên) hoặc dict theo ngôn ngữ hiện tại.
+  const unitLabel = unit ?? t('unit.minutes')
   // Ref cho giá trị/onChange mới nhất — interval "giữ để nhảy nhanh" cần giá trị tươi.
   const valueRef = useRef(value)
   valueRef.current = value
@@ -137,7 +143,7 @@ export default function DurationPicker({
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Bớt ${step} ${unit}`}
+          aria-label={t('picker.stepDownAria', { step, unit: unitLabel })}
           onPointerDown={() => beginHold(-step)}
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
@@ -151,18 +157,18 @@ export default function DurationPicker({
             className={cn('num w-20 bg-transparent text-center text-ink outline-none', numSize)}
             inputMode="numeric"
             autoComplete="off"
-            aria-label={`Nhập số ${unit}`}
+            aria-label={t('picker.inputAria', { unit: unitLabel })}
             value={text}
             onChange={(e) => commitText(e.target.value)}
             onBlur={() => setText(String(value))}
           />
-          <span className="type-caption text-muted">{unit}</span>
+          <span className="type-caption text-muted">{unitLabel}</span>
         </div>
 
         <button
           type="button"
           className="stepper-btn"
-          aria-label={`Thêm ${step} ${unit}`}
+          aria-label={t('picker.stepUpAria', { step, unit: unitLabel })}
           onPointerDown={() => beginHold(step)}
           onPointerUp={stopHold}
           onPointerLeave={stopHold}
@@ -174,13 +180,13 @@ export default function DurationPicker({
 
       {presets.length > 0 && (
         <div className="flex flex-wrap items-center justify-center gap-2">
-          <span className="type-caption text-muted">gợi ý nhanh:</span>
+          <span className="type-caption text-muted">{t('picker.quickLabel')}</span>
           {presets.map((p) => (
             <OptionPill
               key={p}
               selected={value === p}
               onClick={() => onChangeRef.current(clampInt(p, min, max))}
-              ariaLabel={`Chọn ${p} ${unit}`}
+              ariaLabel={t('picker.quickAria', { value: p, unit: unitLabel })}
             >
               {p}
             </OptionPill>
@@ -188,7 +194,7 @@ export default function DurationPicker({
         </div>
       )}
 
-      {!compact && <p className="type-caption text-muted">Bạn có thể tự chỉnh con số này bất cứ lúc nào.</p>}
+      {!compact && <p className="type-caption text-muted">{t('picker.hint')}</p>}
     </div>
   )
 }

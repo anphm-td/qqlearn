@@ -15,17 +15,20 @@
 import { z } from 'zod'
 
 import { localDateISO } from '@core/date'
+import type { I18nVars } from '@core/i18n'
 import type { RestorePhotoInput, RestorePayload } from '@core/ports'
 import {
   chatMessageSchema,
   dailyNoteSchema,
   mistakeInputSchema,
-  scoreInputSchema,
+  scoreRecordSchema,
   sessionInputSchema,
   settingsSchema,
   srsCardSchema,
+  subjectInputSchema,
   vocabInputSchema,
 } from '@core/schemas'
+import { SEED_SUBJECTS } from '@core/subjects'
 import type {
   ChatMessage,
   DailyNote,
@@ -34,6 +37,7 @@ import type {
   Score,
   Session,
   SrsCard,
+  Subject,
   Vocab,
 } from '@core/types'
 
@@ -53,15 +57,15 @@ const CSV_HEADERS_SESSIONS = [
   'bắt đầu',
   'kết thúc',
   'thời lượng (phút)',
-  'part',
+  'môn',
   'hoạt động',
   'nguồn',
   'ghi chú',
 ]
-const CSV_HEADERS_VOCAB = ['từ', 'nghĩa', 'ví dụ', 'part', 'nguồn đề', 'ngày tạo']
+const CSV_HEADERS_VOCAB = ['từ', 'nghĩa', 'ví dụ', 'môn', 'nguồn', 'ngày tạo']
 const CSV_HEADERS_MISTAKES = [
-  'đề số',
-  'part',
+  'đề/bài số',
+  'môn',
   'câu',
   'bạn chọn',
   'đáp án đúng',
@@ -69,7 +73,7 @@ const CSV_HEADERS_MISTAKES = [
   'giải thích',
   'đã ôn lại',
 ]
-const CSV_HEADERS_SCORES = ['ngày', 'tên đề', 'điểm nghe', 'điểm đọc', 'tổng']
+const CSV_HEADERS_SCORES = ['ngày', 'môn', 'nhãn', 'điểm', 'ghi chú']
 
 function csvCell(value: string | number | boolean): string {
   const s = String(value)
@@ -91,11 +95,16 @@ export function formatClock(ms: number): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-function partText(part: number): string {
-  return part > 0 ? String(part) : ''
+/** Tra tên môn từ map id→tên; không có map/không thấy id → chữ số (fallback an toàn). */
+function subjectCell(subjectId: number, subjectNameOf?: (id: number) => string | undefined): string {
+  if (subjectId <= 0) return ''
+  return subjectNameOf?.(subjectId) ?? String(subjectId)
 }
 
-export function sessionsCsv(rows: Session[]): string {
+export function sessionsCsv(
+  rows: Session[],
+  subjectNameOf?: (id: number) => string | undefined,
+): string {
   const sorted = [...rows].sort((a, b) => a.startedAt - b.startedAt)
   return csvTable(
     CSV_HEADERS_SESSIONS,
@@ -104,7 +113,7 @@ export function sessionsCsv(rows: Session[]): string {
       formatClock(s.startedAt),
       s.endedAt === null ? '' : formatClock(s.endedAt),
       s.durationMin,
-      partText(s.part),
+      subjectCell(s.subjectId, subjectNameOf),
       s.activity,
       s.source,
       s.note,
@@ -112,7 +121,10 @@ export function sessionsCsv(rows: Session[]): string {
   )
 }
 
-export function vocabCsv(rows: Vocab[]): string {
+export function vocabCsv(
+  rows: Vocab[],
+  subjectNameOf?: (id: number) => string | undefined,
+): string {
   const sorted = [...rows].sort((a, b) => a.createdAt - b.createdAt)
   return csvTable(
     CSV_HEADERS_VOCAB,
@@ -120,20 +132,23 @@ export function vocabCsv(rows: Vocab[]): string {
       v.word,
       v.meaning,
       v.example,
-      partText(v.part),
+      subjectCell(v.subjectId, subjectNameOf),
       v.sourceTest,
       v.createdAt > 0 ? localDateISO(new Date(v.createdAt)) : '',
     ]),
   )
 }
 
-export function mistakesCsv(rows: Mistake[]): string {
+export function mistakesCsv(
+  rows: Mistake[],
+  subjectNameOf?: (id: number) => string | undefined,
+): string {
   const sorted = [...rows].sort((a, b) => a.createdAt - b.createdAt)
   return csvTable(
     CSV_HEADERS_MISTAKES,
     sorted.map((m) => [
       m.testNo > 0 ? String(m.testNo) : '',
-      partText(m.part),
+      subjectCell(m.subjectId, subjectNameOf),
       m.questionNo,
       m.myAnswer,
       m.correctAnswer,
@@ -144,35 +159,50 @@ export function mistakesCsv(rows: Mistake[]): string {
   )
 }
 
-export function scoresCsv(rows: Score[]): string {
+export function scoresCsv(
+  rows: Score[],
+  subjectNameOf?: (id: number) => string | undefined,
+): string {
   const sorted = [...rows].sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
   return csvTable(
     CSV_HEADERS_SCORES,
-    sorted.map((s) => [s.date, s.testLabel, s.listening, s.reading, s.total]),
+    sorted.map((s) => [s.date, subjectCell(s.subjectId, subjectNameOf), s.label, s.score, s.note]),
   )
 }
 
 // ===== Markdown (ghi chú cuối ngày + buổi học) =====
 
-function sessionLine(s: Session): string {
-  const part = s.part > 0 ? ` (Part ${s.part})` : ''
+function sessionLine(s: Session, subjectName?: string): string {
+  const subject = s.subjectId > 0 ? ` (môn ${subjectName ?? s.subjectId})` : ''
   const end = s.endedAt === null ? 'đang học' : formatClock(s.endedAt)
   const note = s.note ? ` — ${s.note}` : ''
-  return `- ${s.durationMin} phút — ${s.activity}${part} · ${formatClock(s.startedAt)}–${end}${note}`
+  return `- ${s.durationMin} phút — ${s.activity}${subject} · ${formatClock(s.startedAt)}–${end}${note}`
 }
 
-function noteLines(n: DailyNote): string[] {
+function noteLines(n: DailyNote, subjectNameOf?: (id: number) => string | undefined): string[] {
+  const studied =
+    n.partStudied.length > 0
+      ? n.partStudied.map((id) => subjectNameOf?.(id) ?? String(id)).join(', ')
+      : '—'
   return [
     '### Ghi chú cuối ngày',
-    `- Part đã học: ${n.partStudied.length > 0 ? n.partStudied.join(', ') : '—'}`,
+    `- Môn đã học: ${studied}`,
     `- Từ mới: ${n.newWords}`,
     `- Lỗi sai: ${n.mistakesSummary || '—'}`,
     `- Nhận xét: ${n.reflection || '—'}`,
   ]
 }
 
-/** Sổ ghi chú dạng Markdown: mỗi ngày 1 mục, ngày mới nhất đứng trước. */
-export function exportMarkdown(notes: DailyNote[], sessions: Session[], now: Date): string {
+/**
+ * Sổ ghi chú dạng Markdown: mỗi ngày 1 mục, ngày mới nhất đứng trước.
+ * `subjectNameOf` (tuỳ chọn) đổi subjectId → tên môn để tệp dễ đọc hơn.
+ */
+export function exportMarkdown(
+  notes: DailyNote[],
+  sessions: Session[],
+  now: Date,
+  subjectNameOf?: (id: number) => string | undefined,
+): string {
   const byDate = new Map<string, { sessions: Session[]; note?: DailyNote }>()
   for (const s of sessions) {
     const entry = byDate.get(s.date) ?? { sessions: [] }
@@ -187,7 +217,7 @@ export function exportMarkdown(notes: DailyNote[], sessions: Session[], now: Dat
 
   const dates = [...byDate.keys()].sort((a, b) => (a < b ? 1 : a > b ? -1 : 0))
   const out: string[] = [
-    '# Sổ học TOEIC',
+    '# qqlearn',
     '',
     `Xuất ngày ${localDateISO(now)} lúc ${formatClock(now.getTime())}`,
     '',
@@ -198,9 +228,9 @@ export function exportMarkdown(notes: DailyNote[], sessions: Session[], now: Dat
     out.push(`## ${date}`, '')
     if (entry.sessions.length > 0) {
       const sorted = [...entry.sessions].sort((a, b) => a.startedAt - b.startedAt)
-      out.push('### Buổi học', ...sorted.map(sessionLine), '')
+      out.push('### Buổi học', ...sorted.map((s) => sessionLine(s, subjectNameOf?.(s.subjectId))), '')
     }
-    if (entry.note) out.push(...noteLines(entry.note), '')
+    if (entry.note) out.push(...noteLines(entry.note, subjectNameOf), '')
   }
   return out.join('\n')
 }
@@ -277,6 +307,8 @@ export interface BackupInput {
     onboardingDone: boolean
     pomodoro: { focusMin: number; breakMin: number }
   }
+  /** Môn học — kèm theo backup để khôi phục chéo máy không lệch subjectId. */
+  subjects: Subject[]
   sessions: Session[]
   dailyNotes: DailyNote[]
   vocab: Vocab[]
@@ -290,9 +322,11 @@ export interface BackupInput {
 
 export interface BackupData {
   app: 'qlearn-study-log'
-  schemaVersion: 1
+  /** v2 — đa môn hoá: thêm bảng subjects + subjectId thay part. */
+  schemaVersion: 2
   exportedAt: string
   settings: BackupInput['settings']
+  subjects: Subject[]
   sessions: Session[]
   dailyNotes: DailyNote[]
   vocab: Vocab[]
@@ -306,9 +340,10 @@ export interface BackupData {
 export function buildBackup(input: BackupInput, now: Date): BackupData {
   return {
     app: 'qlearn-study-log',
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: `${localDateISO(now)} ${formatClock(now.getTime())}`,
     settings: { ...input.settings, pomodoro: { ...input.settings.pomodoro } },
+    subjects: input.subjects.map((s) => ({ ...s })),
     sessions: [...input.sessions],
     dailyNotes: input.dailyNotes.map((n) => ({ ...n })),
     vocab: input.vocab.map((v) => ({ ...v })),
@@ -327,6 +362,11 @@ export function serializeBackup(data: BackupData): string {
 // ===== Đọc lại bản sao lưu + kế hoạch khôi phục =====
 
 const backupSettingsSchema = settingsSchema.omit({ id: true, updatedAt: true })
+const backupSubjectSchema = subjectInputSchema.extend({
+  id: z.number(),
+  createdAt: z.number(),
+  updatedAt: z.number(),
+})
 const backupSessionSchema = sessionInputSchema.extend({ id: z.number(), updatedAt: z.number() })
 const backupVocabSchema = vocabInputSchema.extend({ id: z.number(), createdAt: z.number(), updatedAt: z.number() })
 const backupSrsSchema = srsCardSchema.extend({ id: z.number() })
@@ -335,7 +375,8 @@ const backupMistakeSchema = mistakeInputSchema.extend({
   createdAt: z.number(),
   updatedAt: z.number(),
 })
-const backupScoreSchema = scoreInputSchema.extend({ id: z.number(), updatedAt: z.number() })
+// label cho phép rỗng ở response/backup (MEDIUM 5) — input form mới yêu cầu min(1).
+const backupScoreSchema = scoreRecordSchema.extend({ id: z.number(), updatedAt: z.number() })
 const backupChatSchema = chatMessageSchema.extend({ id: z.number(), updatedAt: z.number() })
 const backupPhotoSchema = z.object({
   id: z.number(),
@@ -347,9 +388,10 @@ const backupPhotoSchema = z.object({
 
 const backupFileSchema = z.object({
   app: z.literal('qlearn-study-log'),
-  schemaVersion: z.literal(1),
+  schemaVersion: z.literal(2),
   exportedAt: z.string(),
   settings: backupSettingsSchema,
+  subjects: z.array(backupSubjectSchema),
   sessions: z.array(backupSessionSchema),
   dailyNotes: z.array(dailyNoteSchema),
   vocab: z.array(backupVocabSchema),
@@ -360,25 +402,101 @@ const backupFileSchema = z.object({
   photos: z.array(backupPhotoSchema),
 })
 
+/**
+ * Chuyển đổi bản sao lưu v1 (khung TOEIC cũ: part 1–7, testLabel/listening/reading/
+ * total, chưa có subjects) sang shape v2 — chạy TRƯỚC khi validate. Quy tắc giống
+ * migration DB: part 1–7 → id môn TOEIC (1 — seed cố định của converter), 0/khác → 0;
+ * total → score; testLabel → label ('Bài kiểm tra' nếu trống); nghe/đọc → note.
+ */
+function convertBackupV1toV2(raw: Record<string, unknown>): unknown {
+  const TOEIC_ID = 1
+  const legacySubject = (part: unknown): number =>
+    typeof part === 'number' && part >= 1 && part <= 7 ? TOEIC_ID : 0
+  const now = Date.now()
+
+  const sessions = Array.isArray(raw.sessions) ? raw.sessions : []
+  const vocab = Array.isArray(raw.vocab) ? raw.vocab : []
+  const mistakes = Array.isArray(raw.mistakes) ? raw.mistakes : []
+  const scores = Array.isArray(raw.scores) ? raw.scores : []
+  const dailyNotes = Array.isArray(raw.dailyNotes) ? raw.dailyNotes : []
+
+  return {
+    ...raw,
+    schemaVersion: 2,
+    subjects: SEED_SUBJECTS.map((s, i) => ({
+      id: i + 1,
+      name: s.name,
+      colorHex: s.colorHex,
+      goalMinutesPerDay: s.goalMinutesPerDay,
+      archived: false,
+      createdAt: now + i,
+      updatedAt: now + i,
+    })),
+    sessions: sessions.map((s: Record<string, unknown>) => {
+      const { part, ...rest } = s
+      return { ...rest, subjectId: legacySubject(part) }
+    }),
+    vocab: vocab.map((v: Record<string, unknown>) => {
+      const { part, ...rest } = v
+      return { ...rest, subjectId: legacySubject(part) }
+    }),
+    mistakes: mistakes.map((m: Record<string, unknown>) => {
+      const { part, ...rest } = m
+      return { ...rest, subjectId: legacySubject(part) }
+    }),
+    scores: scores.map((s: Record<string, unknown>) => {
+      const { testLabel, listening, reading, total, ...rest } = s
+      const li = typeof listening === 'number' ? listening : 0
+      const re = typeof reading === 'number' ? reading : 0
+      return {
+        ...rest,
+        subjectId: TOEIC_ID,
+        label: typeof testLabel === 'string' && testLabel !== '' ? testLabel : 'Bài kiểm tra',
+        score: typeof total === 'number' ? total : 0,
+        note: li > 0 || re > 0 ? `nghe ${li} · đọc ${re}` : '',
+      }
+    }),
+    dailyNotes: dailyNotes.map((n: Record<string, unknown>) => ({
+      ...n,
+      partStudied: Array.isArray(n.partStudied)
+        ? n.partStudied.map((v) => (typeof v === 'number' && v >= 1 && v <= 7 ? TOEIC_ID : v))
+        : [],
+    })),
+  }
+}
+
+/**
+ * Kết quả đọc tệp sao lưu. Lỗi trả về là chuỗi HIỂN THỊ đã dịch qua `t` (dict
+ * 'settings' — nhóm 'data.backup.*'); hàm dịch được TIÊM vào nên logic vẫn thuần
+ * (không truyền `t` → trả chính key, an toàn không ném).
+ */
 export type ParseBackupResult =
   | { ok: true; data: BackupData }
   | { ok: false; error: string }
 
-export function parseBackup(text: string): ParseBackupResult {
+/** Kiểu hàm dịch tối giản — khớp signature `t` của '@core/i18n' (thuần, không React). */
+export type TranslateFn = (key: string, vars?: I18nVars) => string
+
+export function parseBackup(text: string, t: TranslateFn = (key) => key): ParseBackupResult {
   let raw: unknown
   try {
     raw = JSON.parse(text)
   } catch {
-    return { ok: false, error: 'Tệp này không đọc được — chưa phải bản sao lưu của Sổ.' }
+    return { ok: false, error: t('data.backup.notBackup') }
+  }
+  // Backup v1 (schema cũ) → tự chuyển sang v2 rồi mới validate.
+  if (
+    typeof raw === 'object' &&
+    raw !== null &&
+    (raw as Record<string, unknown>)['schemaVersion'] === 1
+  ) {
+    raw = convertBackupV1toV2(raw as Record<string, unknown>)
   }
   const parsed = backupFileSchema.safeParse(raw)
   if (!parsed.success) {
     const issue = parsed.error.issues[0]
-    const where = issue && issue.path.length > 0 ? issue.path.join(' → ') : 'nội dung'
-    return {
-      ok: false,
-      error: `Bản sao lưu thiếu hoặc sai mục "${where}" — không khôi phục được.`,
-    }
+    const where = issue && issue.path.length > 0 ? issue.path.join(' → ') : t('data.backup.where.content')
+    return { ok: false, error: t('data.backup.missingField', { where }) }
   }
   return { ok: true, data: parsed.data as BackupData }
 }
@@ -414,8 +532,8 @@ export function planRestore(data: BackupData): RestorePlan {
   }
 
   return {
-    // Chọn ĐÚNG 7 trường cài đặt — syncMode/serverUrl là lựa chọn của máy này,
-    // không nằm trong bản sao lưu và không bị khôi phục ghi đè.
+    // Chọn ĐÚNG 7 trường cài đặt — syncMode/serverUrl/checkinEnabled là lựa chọn
+    // của máy này, không nằm trong bản sao lưu và không bị khôi phục ghi đè.
     settings: {
       dailyGoalMinutes: data.settings.dailyGoalMinutes,
       targetScore: data.settings.targetScore,
@@ -425,12 +543,21 @@ export function planRestore(data: BackupData): RestorePlan {
       onboardingDone: data.settings.onboardingDone,
       pomodoro: { ...data.settings.pomodoro },
     },
+    // Môn học giữ id CŨ — impl restore ánh xạ id cũ → mới rồi remap subjectId
+    // của các hàng dữ liệu (pattern refKey của ảnh).
+    subjects: data.subjects.map((s) => ({
+      id: s.id ?? 0,
+      name: s.name,
+      colorHex: s.colorHex,
+      goalMinutesPerDay: s.goalMinutesPerDay,
+      archived: s.archived,
+    })),
     sessions: data.sessions.map((s) => ({
       date: s.date,
       startedAt: s.startedAt,
       endedAt: s.endedAt,
       durationMin: s.durationMin,
-      part: s.part,
+      subjectId: s.subjectId,
       activity: s.activity,
       source: s.source,
       note: s.note,
@@ -439,7 +566,7 @@ export function planRestore(data: BackupData): RestorePlan {
       word: v.word,
       meaning: v.meaning,
       example: v.example,
-      part: v.part,
+      subjectId: v.subjectId,
       sourceTest: v.sourceTest,
     })),
     srsCards: data.srsCards.map((c) => {
@@ -454,7 +581,7 @@ export function planRestore(data: BackupData): RestorePlan {
     }),
     mistakes: data.mistakes.map((m) => ({
       testNo: m.testNo,
-      part: m.part,
+      subjectId: m.subjectId,
       questionNo: m.questionNo,
       myAnswer: m.myAnswer,
       correctAnswer: m.correctAnswer,
@@ -464,10 +591,10 @@ export function planRestore(data: BackupData): RestorePlan {
     })),
     scores: data.scores.map((s) => ({
       date: s.date,
-      testLabel: s.testLabel,
-      listening: s.listening,
-      reading: s.reading,
-      total: s.total,
+      subjectId: s.subjectId,
+      label: s.label,
+      score: s.score,
+      note: s.note,
     })),
     dailyNotes: data.dailyNotes.map((n) => ({ ...n })),
     chat: data.chatMessages.map((c) => ({ sessionId: c.sessionId, role: c.role, content: c.content })),

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { queryRag, RAG_NOT_CONNECTED_MESSAGE, RAG_TIMEOUT_MS } from './ragClient'
+import { queryRag, RAG_TIMEOUT_MS } from './ragClient'
 
 /** Đối tượng đủ interface mà ragClient đọc từ response (ok/status/text) — không cần Response thật. */
 function jsonResponse(body: unknown, status = 200) {
@@ -27,9 +27,19 @@ describe('queryRag — POST {ragBaseUrl}/ask', () => {
     expect(result).toEqual({
       ok: false,
       reason: 'empty-url',
-      message: RAG_NOT_CONNECTED_MESSAGE,
+      message: 'Chưa kết nối máy trợ lý — nhập địa chỉ máy trợ lý trong Cài đặt',
     })
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('lang "en" → thông điệp lỗi dịch tiếng Anh (client soạn message qua t)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const result = await queryRag('http://x', 'q', { lang: 'en' })
+    expect(result).toMatchObject({
+      ok: false,
+      reason: 'network',
+      message: "Couldn't reach the assistant. Make sure it's running, then try again.",
+    })
   })
 
   it('câu hỏi rỗng → empty-question, không gọi fetch', async () => {

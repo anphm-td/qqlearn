@@ -18,3 +18,19 @@ dev-dist/
 # server PC (F21)
 server/data/
 server/dist/
+
+# build artifact cài thử (rebuild được bằng gradlew, xem README)
+*.apk
+
+# ZCode workspace (machine-owned: workflow drafts, plans, run history)
+.zcode/
+
+# superdesign scratch (giữ design-system.md, bỏ bản nháp tạm)
+.superdesign/tmp/
+
+# file rác Windows / hệ thống
+nul
+Thumbs.db
+.DS_Store
+*.log
+*.tsbuildinfo

@@ -21,6 +21,7 @@ import type {
   ScoreRepo,
   SessionRepo,
   SettingsRepo,
+  SubjectRepo,
   SrsRepo,
   VocabRepo,
 } from '@core/ports'
@@ -34,6 +35,7 @@ import { DexieRestoreRepo } from './repositories/dexieRestoreRepo'
 import { DexieScoreRepo } from './repositories/dexieScoreRepo'
 import { DexieSessionRepo } from './repositories/dexieSessionRepo'
 import { DexieSettingsRepo } from './repositories/dexieSettingsRepo'
+import { DexieSubjectRepo } from './repositories/dexieSubjectRepo'
 import { DexieSrsRepo } from './repositories/dexieSrsRepo'
 import { DexieVocabRepo } from './repositories/dexieVocabRepo'
 import { HttpChatRepo } from './http/httpChatRepo'
@@ -44,6 +46,7 @@ import { HttpRestoreRepo } from './http/httpRestoreRepo'
 import { HttpScoreRepo } from './http/httpScoreRepo'
 import { HttpSessionRepo } from './http/httpSessionRepo'
 import { HttpSettingsRepo } from './http/httpSettingsRepo'
+import { HttpSubjectRepo } from './http/httpSubjectRepo'
 import { HttpSrsRepo } from './http/httpSrsRepo'
 import { HttpVocabRepo } from './http/httpVocabRepo'
 
@@ -60,13 +63,15 @@ export type {
   Score,
   Session,
   Settings,
+  Subject,
   SrsCard,
   Vocab,
 } from './db'
 
-/** Tập 10 repo — cài đặt các ports của '@core/ports' (UI chỉ nhìn interface này). */
+/** Tập 11 repo — cài đặt các ports của '@core/ports' (UI chỉ nhìn interface này). */
 export interface Repos {
   settings: SettingsRepo
+  subjects: SubjectRepo
   sessions: SessionRepo
   notes: NoteRepo
   vocab: VocabRepo
@@ -83,6 +88,7 @@ export interface Repos {
 export function createLocalRepos(): Repos {
   return {
     settings: new DexieSettingsRepo(),
+    subjects: new DexieSubjectRepo(),
     sessions: new DexieSessionRepo(),
     notes: new DexieNoteRepo(),
     vocab: new DexieVocabRepo(),
@@ -99,6 +105,7 @@ export function createLocalRepos(): Repos {
 export function createServerRepos(baseUrl: string): Repos {
   return {
     settings: new HttpSettingsRepo(baseUrl),
+    subjects: new HttpSubjectRepo(baseUrl),
     sessions: new HttpSessionRepo(baseUrl),
     notes: new HttpNoteRepo(baseUrl),
     vocab: new HttpVocabRepo(baseUrl),

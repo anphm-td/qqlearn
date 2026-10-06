@@ -1,11 +1,19 @@
 import { expect, test } from '@playwright/test'
 
-test.describe('Smoke — Sổ học TOEIC', () => {
+test.describe('Smoke — qqlearn', () => {
   test('mở "/" được (HTTP 200) và trang render khung Home', async ({ page }) => {
     const response = await page.goto('/')
     expect(response?.status()).toBe(200)
     await expect(page.getByRole('heading', { level: 1, name: 'Hôm nay' })).toBeVisible()
     await expect(page.getByText('Gợi ý hôm nay')).toBeVisible()
+  })
+
+  test('mở "/mon-hoc" thấy trang Môn học với 4 môn seed', async ({ page }) => {
+    await page.goto('/mon-hoc')
+    await expect(page.getByRole('heading', { level: 1, name: 'Môn học' })).toBeVisible()
+    for (const name of ['TOEIC', 'Toán', 'Tiếng Nhật', 'Lập trình']) {
+      await expect(page.getByRole('article').filter({ hasText: name })).toBeVisible()
+    }
   })
 
   test('mở "/onboarding" thấy heading bước đầu', async ({ page }) => {

@@ -1,24 +1,39 @@
-# qlearn
+# qqlearn
 
-**Sổ học TOEIC** — PWA (Vite + React + TypeScript) để ghi chú và theo dõi việc học
-TOEIC hằng ngày: bấm giờ buổi học, sổ từ vựng ôn giãn cách, sổ lỗi sai, điểm luyện
-đề, thống kê + báo cáo tuần. Dữ liệu local-first, dùng offline được.
+**qqlearn** — PWA (Vite + React + TypeScript) sổ tay học tập **đa môn** để ghi chú
+và theo dõi việc học hằng ngày: bấm giờ buổi học, sổ từ vựng ôn giãn cách, sổ lỗi
+sai, sổ điểm theo môn, thống kê + báo cáo tuần. Mỗi môn một màu riêng — TOEIC chỉ
+còn là một trong các môn bạn tự định nghĩa. Dữ liệu local-first, dùng offline được.
+
+## Chạy không cần lệnh (dành cho người dùng phổ thông)
+
+- **Trên PC Windows: nhấp đúp file `qqlearn.cmd`.**
+  - Lần đầu chạy: tự cài và tự chuẩn bị mọi thứ (vài phút) — chỉ làm đúng một lần.
+  - Các lần sau: nhấp đúp là chạy ngay. Cửa sổ hiện địa chỉ
+    **PC: http://localhost:5178** và tự mở trình duyệt trên PC.
+- **Dùng trên điện thoại** (nối điện thoại vào **cùng Wi-Fi** với PC):
+  - quét **mã QR** hiện trong cửa sổ `qqlearn.cmd` khi khởi động, hoặc
+  - mở Sổ trên PC → *Cài đặt → Kết nối điện thoại* → bấm **"Hiện mã QR"** rồi quét,
+  - mở địa chỉ hiện dưới mã QR bằng trình duyệt điện thoại (menu trình duyệt →
+    "Thêm vào Màn hình chính" để cài Sổ như ứng dụng).
+- **Dữ liệu**: khi dùng qua server PC, dữ liệu lưu tại **`server/data/qlearn.db`
+  trên PC** — sao lưu định kỳ trong *Cài đặt → "Sao lưu toàn bộ vào máy"*.
 
 ## App là gì & vòng lặp học hằng ngày
 
 Vòng lặp mỗi ngày của người học:
 
 1. **Lần đầu mở app** — trang *Onboarding* hỏi mục tiêu: học bao nhiêu phút mỗi
-   ngày, điểm TOEIC mục tiêu, ngày thi (`src/features/onboarding/OnboardingPage.tsx`).
+   ngày, và cho chọn/tạo các môn đang học (`src/features/onboarding/OnboardingPage.tsx`).
 2. **Mở app → trang "Hôm nay"** — vòng tròn tiến độ % mục tiêu trong ngày (tổng số
    phút các buổi học hôm nay / mục tiêu), chuỗi streak tuần, danh sách buổi học đã
    ghi, gợi ý *"Hôm nay nên học gì"*, và form ghi chú cuối ngày
    (`src/features/today/TodayPage.tsx`).
 3. **Bấm "Bắt đầu học"** — trang buổi học đếm giờ theo timestamp (không trôi khi
    tab bị treo/điện thoại ngủ), mặc định Pomodoro 25/5 nhưng **thời lượng tự chỉnh**
-   (stepper ±5 + nhập tự do), chọn Part 1–7; kết thúc buổi lưu vào sổ
+   (stepper ±5 + nhập tự do), chọn môn học; kết thúc buổi lưu vào sổ
    (`src/features/study/SessionPage.tsx`, `src/features/today/timerLogic.ts`).
-4. **Cuối ngày** — điền ghi chú cuối ngày ("Hôm nay học được gì": Part đã học, từ
+4. **Cuối ngày** — điền ghi chú cuối ngày ("Hôm nay học được gì": môn đã học, từ
    mới, lỗi sai, nhận xét), có nút *"Soạn nháp"* tự điền nháp từ dữ liệu hôm nay
    (`src/features/notes/DailyNotePage.tsx`, `src/features/smart/dailyDraft.ts`).
 5. **Định kỳ** — ôn từ vựng đến hạn (SRS), xem báo cáo tuần để so với tuần trước.
@@ -27,41 +42,44 @@ Vòng lặp mỗi ngày của người học:
 
 ### A — Vòng lặp học hằng ngày
 
-- **A1 Onboarding** (`/onboarding`) — đặt mục tiêu hằng ngày, điểm mục tiêu, ngày
-  thi; chỉnh lại được sau trong Cài đặt.
+- **A1 Onboarding** (`/onboarding`) — đặt mục tiêu hằng ngày + chọn/tạo môn đang
+  học; chỉnh lại được sau trong Cài đặt và trang Môn học.
 - **A4 Trang "Hôm nay"** (`/`) — ProgressBubble % mục tiêu, streak tuần 7 ô,
   danh sách buổi học hôm nay, nút "Bắt đầu học".
-- **A2 Buổi học** (`/hoc/buoi-hoc`) — timer học + nhập tay buổi học; Part 1–7;
+- **A2 Buổi học** (`/hoc/buoi-hoc`) — timer học + nhập tay buổi học; chọn môn;
   Pomodoro cấu hình được trong Cài đặt.
 - **A3 Ghi chú cuối ngày** (`/ghichu`) — form "Hôm nay học được gì" + nút "Soạn nháp".
 - **A5 Hỏi giờ học khi mở app (check-in)** — khi mở Sổ, app hỏi "Bạn vừa học được
   bao nhiêu phút?" — trả lời được lưu ngay thành một buổi học, cộng vào tiến độ
   hôm nay và thống kê; bật/tắt trong Cài đặt (`CheckinPrompt.tsx`, `checkinLogic.ts`).
+- **Môn học** (`/mon-hoc`) — tự định nghĩa môn: tên (duy nhất), màu từ bộ 6 pastel
+  định sẵn (mục 5 design-system), mục tiêu phút/ngày riêng tự chỉnh, lưu trữ.
+  Môn đã có dữ liệu chỉ lưu trữ được, không xoá (`src/features/subjects/`).
 
-### B — Sổ tay nội dung TOEIC (`src/features/notebook/`)
+### B — Sổ tay nội dung theo môn (`src/features/notebook/`)
 
-- **B5 Sổ từ vựng** (`/sotay/tu-vung`) — thêm/sửa/xoá từ (nghĩa, ví dụ, Part, đề
-  nguồn) + tìm kiếm; **ôn tập flashcard** (`/sotay/tu-vung/on-tap`) theo giãn cách
-  Leitner 5 hộp — trả đúng tăng hộp (hạn ôn 1 · 3 · 7 · 16 · 35 ngày), trả sai về
-  hộp 1 (`srs.ts`).
-- **B6 Sổ lỗi sai** (`/sotay/loi-sai`) — ghi lỗi sai theo đề/Part/câu, nguyên nhân,
-  giải thích; lọc chưa ôn lại; đánh dấu đã ôn.
-- **B7** — lọc theo Part + ô tìm kiếm nhanh cho từ vựng và lỗi sai.
-- **B8** — đính kèm ảnh trang sách/đề (lưu Blob, xem lại trong ghi chú).
+- **B5 Sổ từ vựng** (`/sotay/tu-vung`) — thêm/sửa/xoá từ (nghĩa, ví dụ, môn,
+  nguồn) + tìm kiếm + lọc theo môn; **ôn tập flashcard** (`/sotay/tu-vung/on-tap`)
+  theo giãn cách Leitner 5 hộp — trả đúng tăng hộp (hạn ôn 1 · 3 · 7 · 16 · 35
+  ngày), trả sai về hộp 1 (`srs.ts`).
+- **B6 Sổ lỗi sai** (`/sotay/loi-sai`) — ghi lỗi sai theo đề/bài/môn/câu, nguyên
+  nhân, giải thích; lọc chưa ôn lại + theo môn; đánh dấu đã ôn.
+- **B7** — lọc theo môn + ô tìm kiếm nhanh cho từ vựng, lỗi sai và ghi chú.
+- **B8** — đính kèm ảnh trang sách/bài tập (lưu Blob, xem lại trong ghi chú).
 
 ### C — Thống kê & động lực (`src/features/stats/`)
 
 - **C9 Thống kê** (`/thongke`) — biểu đồ SVG tự vẽ giờ học theo ngày/tuần/tháng +
-  phân bổ theo Part (không dùng thư viện chart).
-- **C10 Điểm luyện đề** (`/thongke/diem`) — nhập điểm Listening/Reading/Total +
-  đồ thị tiến bộ so với điểm mục tiêu.
+  phân bổ theo môn (mỗi môn một màu riêng từ bộ màu môn, không dùng thư viện chart).
+- **C10 Sổ điểm** (`/thongke/diem`) — nhập điểm kiểm tra theo môn (một điểm duy
+  nhất + nhãn + ghi chú) + đồ thị tiến bộ.
 - **C11 Báo cáo tuần** (`/thongke/tuan`) — tổng giờ, từ mới, lỗi sai, so với tuần
   trước + lịch heatmap theo tháng.
 
 ### D — Hệ thống (`src/features/system/`, `src/features/settings/`)
 
-- **Cài đặt** (`/caidat`) — mục tiêu hằng ngày, điểm mục tiêu, ngày thi, cấu hình
-  Pomodoro, giờ nhắc, địa chỉ máy trợ lý (chat RAG), chọn nguồn dữ liệu.
+- **Cài đặt** (`/caidat`) — mục tiêu hằng ngày, cấu hình Pomodoro, giờ nhắc, địa
+  chỉ máy trợ lý (chat RAG), chọn nguồn dữ liệu.
 - **C12 Nhắc lịch** — nhắc giờ học + nhắc ghi chú cuối ngày bằng Notification API;
   chưa cấp quyền thì hiện banner ngay trong app; mở lại app được "bù" lời nhắc lỡ
   trong 90 phút (`useReminders.ts`).
@@ -74,7 +92,7 @@ Vòng lặp mỗi ngày của người học:
 ### E — Học thông minh (`src/features/smart/`)
 
 - **D14 "Hôm nay nên học gì"** — thẻ gợi ý trên Home: ưu tiên lỗi sai chưa ôn →
-  thẻ SRS đến hạn hôm nay → Part có số phút ít nhất trong 7 ngày qua
+  thẻ SRS đến hạn hôm nay → môn có số giờ ít nhất trong 7 ngày qua
   (`suggestion.ts`).
 - **D15 Soạn nháp ghi chú cuối ngày** — `buildDailyDraft()` từ dữ liệu hôm nay;
   RAG lỗi/chưa cấu hình thì tự soạn tại chỗ, không bao giờ treo UI (`dailyDraft.ts`).
@@ -145,7 +163,7 @@ Một PC (Windows/Linux/macOS) chạy server, điện thoại chỉ cần trình
 
 1. Trên PC: `npm run build` (tạo `dist/`) rồi `npm run server`. Server Express +
    SQLite lắng nghe `0.0.0.0:5178`, vừa phục vụ bản PWA vừa cung cấp API CRUD cho
-   9 bảng, và in rõ URL truy cập: `http://localhost:5178` + các địa chỉ IP LAN của
+   các bảng (gồm môn học), và in rõ URL truy cập: `http://localhost:5178` + các địa chỉ IP LAN của
    máy (`server/src/index.ts`).
 2. Trên điện thoại **cùng Wi-Fi**: mở `http://<IP-máy>:5178` (địa chỉ server in ra
    khi khởi động).
@@ -168,21 +186,21 @@ cài được PWA đầy đủ** (một số tính năng như Notification có t
 
 ```
 src/
-  core/       — thuần TypeScript: types, Zod schemas, 9 ports (interface dữ liệu),
+  core/       — thuần TypeScript: types, Zod schemas, các ports (interface dữ liệu, gồm SubjectRepo),
                 tiện ngày tháng. KHÔNG import React/Dexie/window; server tái sử dụng
                 trực tiếp (server/tsconfig.json include ../src/core).
   data/       — lớp dữ liệu: Dexie/IndexedDB (repositories/) + HTTP repos (http/)
                 cài CÙNG interface @core/ports. Factory createRepos() chọn impl theo
                 chế độ "Trên máy này" / "Qua server PC". UI chỉ gọi `repos` từ '@data'.
   features/   — UI + logic thuần tách file riêng, chia theo nhóm A–E ở trên.
-server/       — server PC (Express + SQLite): API CRUD 9 bảng map 1-1 với 9 ports,
+server/       — server PC (Express + SQLite): API CRUD map 1-1 với các ports trong src/core/ports,
                 phục vụ dist/ + SPA fallback, POST /api/restore cho bản sao lưu.
 ```
 
 Điểm mấu chốt: UI chỉ biết `@core/ports`, nên **đổi nơi lưu dữ liệu không phải đổi
 UI**. Lộ trình nâng cấp server gồm 3 bước:
 
-1. **HTTP repositories cùng interface** — đã có trong `src/data/http/` (10 repo,
+1. **HTTP repositories cùng interface** — đã có trong `src/data/http/` (mỗi port một repo,
    một repo cho mỗi port); chế độ "Qua server PC" đang dùng chính bộ này.
 2. **Dựng backend RAG (FastAPI)** theo `docs/thiet-ke-rag-toeic.md` — hạ tầng chat
    D13 đã sẵn sàng chờ: nhập địa chỉ backend vào Cài đặt (trường máy trợ lý) là

@@ -5,9 +5,23 @@
  * ABORT transaction khi có lỗi (duyệt ra exception) và ROLLBACK mọi thay đổi —
  * không bao giờ để lại dữ liệu khôi phục một phần. Chạy lại cho cùng kết quả vì
  * mỗi lần đều clear-trước-ghi.
+ *
+ * Môn học: subjects được xoá + ghi lại từ payload; id CŨ trong bản sao lưu được
+ * ÁNH XẠ sang id mới (pattern refKey của ảnh) rồi remap subjectId của sessions/
+ * vocab/mistakes/scores và dailyNotes.partStudied theo ánh xạ — môn không có
+ * trong payload → 0 (chưa phân môn).
  */
 import type { RestorePayload, RestoreRepo } from '@core/ports'
-import type { ChatMessage, DailyNote, Mistake, Photo, Session, SrsCard, Vocab } from '@core/types'
+import type {
+  ChatMessage,
+  DailyNote,
+  Mistake,
+  Photo,
+  Session,
+  Subject,
+  SrsCard,
+  Vocab,
+} from '@core/types'
 
 import { DEFAULT_SETTINGS, db } from '../db'
 
@@ -15,12 +29,24 @@ export class DexieRestoreRepo implements RestoreRepo {
   async restoreAll(payload: RestorePayload): Promise<void> {
     await db.transaction(
       'rw',
-      [db.settings, db.sessions, db.dailyNotes, db.vocab, db.srsCards, db.mistakes, db.scores, db.photos, db.chatMessages],
+      [
+        db.settings,
+        db.subjects,
+        db.sessions,
+        db.dailyNotes,
+        db.vocab,
+        db.srsCards,
+        db.mistakes,
+        db.scores,
+        db.photos,
+        db.chatMessages,
+      ],
       async () => {
         const now = Date.now()
 
-        // Xoá sạch 8 bảng dữ liệu (giữ hàng settings — chỉ ghi đè các trường payload).
+        // Xoá sạch các bảng dữ liệu (gồm subjects; giữ hàng settings — chỉ ghi đè các trường payload).
         await Promise.all([
+          db.subjects.clear(),
           db.sessions.clear(),
           db.dailyNotes.clear(),
           db.vocab.clear(),
@@ -31,22 +57,33 @@ export class DexieRestoreRepo implements RestoreRepo {
           db.chatMessages.clear(),
         ])
 
-        // Settings: merge payload lên hàng hiện có — syncMode/serverUrl KHÔNG nằm
-        // trong bản sao lưu (nguồn dữ liệu là lựa chọn của máy này, không đổi khi restore).
+        // Settings: merge payload lên hàng hiện có — syncMode/serverUrl/checkinEnabled
+        // KHÔNG nằm trong bản sao lưu (lựa chọn của máy này, không đổi khi restore).
         const current = (await db.settings.get(1)) ?? DEFAULT_SETTINGS
         await db.settings.put({ ...current, ...payload.settings, id: 1, updatedAt: now })
+
+        // Subjects: ghi lại payload (id mới tự sinh) + ÁNH XẠ id cũ → id mới.
+        const subjectIdMap = new Map<number, number>()
+        for (const s of payload.subjects) {
+          const { id: oldId, ...rest } = s
+          const row: Subject = { ...rest, createdAt: now, updatedAt: now }
+          const newId = await db.subjects.add(row)
+          subjectIdMap.set(oldId, newId)
+        }
+        /** Id cũ → id mới; môn không có trong payload → 0 (chưa phân môn). */
+        const remapSubject = (oldId: number): number => subjectIdMap.get(oldId) ?? 0
 
         // Sessions + mapping chỉ mục → id mới (ảnh tham chiếu theo chỉ mục).
         const sessionIds: number[] = []
         for (const s of payload.sessions) {
-          const row: Session = { ...s, updatedAt: now }
+          const row: Session = { ...s, subjectId: remapSubject(s.subjectId), updatedAt: now }
           sessionIds.push(await db.sessions.add(row))
         }
 
         // Vocab + mapping chỉ mục → id mới (thẻ SRS tham chiếu theo chỉ mục).
         const vocabIds: number[] = []
         for (const v of payload.vocab) {
-          const row: Vocab = { ...v, createdAt: now, updatedAt: now }
+          const row: Vocab = { ...v, subjectId: remapSubject(v.subjectId), createdAt: now, updatedAt: now }
           vocabIds.push(await db.vocab.add(row))
         }
 
@@ -67,16 +104,20 @@ export class DexieRestoreRepo implements RestoreRepo {
 
         const mistakeIds: number[] = []
         for (const m of payload.mistakes) {
-          const row: Mistake = { ...m, createdAt: now, updatedAt: now }
+          const row: Mistake = { ...m, subjectId: remapSubject(m.subjectId), createdAt: now, updatedAt: now }
           mistakeIds.push(await db.mistakes.add(row))
         }
 
         for (const s of payload.scores) {
-          await db.scores.add({ ...s, updatedAt: now })
+          await db.scores.add({ ...s, subjectId: remapSubject(s.subjectId), updatedAt: now })
         }
 
         for (const n of payload.dailyNotes) {
-          const row: DailyNote = { ...n, updatedAt: now }
+          const row: DailyNote = {
+            ...n,
+            partStudied: n.partStudied.map(remapSubject),
+            updatedAt: now,
+          }
           await db.dailyNotes.put(row)
         }
 
